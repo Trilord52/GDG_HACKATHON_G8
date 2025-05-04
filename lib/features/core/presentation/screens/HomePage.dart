@@ -22,8 +22,7 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   List<Map<String, String>> recentActivities = [];
-  bool showAllContacts = false;
-  bool showAllActivities = false;
+  bool showAllActivities = false; // Only keep toggle for Recent Activities
 
   void openReportIncidentSheet() async {
     final result = await showModalBottomSheet<Map<String, String>>(
@@ -152,7 +151,10 @@ class _HomePageState extends State<HomePage> {
                       Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (context) => MapPage(contacts: widget.initialContacts),
+                          builder: (context) => MapPage(
+                            contacts: widget.initialContacts,
+                            onContactsUpdated: widget.onContactsUpdated,
+                          ),
                         ),
                       );
                     },
@@ -200,7 +202,7 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
-  Widget _buildRoundedIconButton({
+  Widget buildRoundedIconButton({
     required IconData icon,
     required String label,
     required VoidCallback onPressed,
@@ -372,68 +374,80 @@ class _HomePageState extends State<HomePage> {
                         const SizedBox(height: 30),
 
                         // Trusted Contacts Section
-                        GestureDetector(
-                          onTap: () => setState(() => showAllContacts = !showAllContacts),
-                          child: Container(
-                            width: double.infinity,
-                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
-                            decoration: BoxDecoration(
-                              border: Border.all(color: Colors.grey.shade300),
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text("Trusted contacts",
-                                    style: GoogleFonts.poppins(fontWeight: FontWeight.bold, fontSize: 16)),
-                                const SizedBox(height: 6),
-                                Text(
-                                    "people who can see your location during emergencies",
-                                    style: GoogleFonts.poppins(color: Colors.grey, fontSize: 13)),
-                                const SizedBox(height: 20),
-
-                                if (showAllContacts)
-                                  Column(
-                                    children: widget.initialContacts
-                                        .map((c) => ListTile(
-                                              title: Text(c['name'] ?? '', style: GoogleFonts.poppins()),
-                                              subtitle: Text(c['phone'] ?? '',
-                                                  style: GoogleFonts.poppins(fontSize: 12)),
-                                            ))
-                                        .toList(),
-                                  ),
-
-                                const SizedBox(height: 10),
-                                Center(
-                                  child: Container(
-                                    width: screenWidth * 0.6,
-                                    height: 45,
-                                    decoration: BoxDecoration(
-                                      gradient: const LinearGradient(
-                                        colors: [Color(0xFFF1EBFF), Color(0xFFEDEBFF)],
-                                      ),
-                                      borderRadius: BorderRadius.circular(12),
-                                      boxShadow: const [
-                                        BoxShadow(
-                                          color: Colors.black12,
-                                          blurRadius: 5,
-                                          offset: Offset(2, 4),
-                                        )
-                                      ],
-                                    ),
-                                    child: TextButton.icon(
-                                      onPressed: openManageContactsSheet,
-                                      icon: const Icon(Icons.manage_accounts, color: Colors.black),
-                                      label: Text("Manage contacts",
-                                          style: GoogleFonts.poppins(color: Colors.black)),
-                                      style: TextButton.styleFrom(
-                                        padding: const EdgeInsets.symmetric(horizontal: 10),
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
+                          decoration: BoxDecoration(
+                            border: Border.all(color: Colors.grey.shade300),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                "Trusted contacts",
+                                style: GoogleFonts.poppins(fontWeight: FontWeight.bold, fontSize: 16),
+                              ),
+                              const SizedBox(height: 6),
+                              Text(
+                                "people who can see your location during emergencies",
+                                style: GoogleFonts.poppins(color: Colors.grey, fontSize: 13),
+                              ),
+                              const SizedBox(height: 20),
+                              widget.initialContacts.isNotEmpty
+                                  ? Column(
+                                      children: widget.initialContacts
+                                          .map((c) => ListTile(
+                                                title: Text(c['name'] ?? '', style: GoogleFonts.poppins()),
+                                                subtitle: Text(c['phone'] ?? '',
+                                                    style: GoogleFonts.poppins(fontSize: 12)),
+                                              ))
+                                          .toList(),
+                                    )
+                                  : Center(
+                                      child: Column(
+                                        children: [
+                                          const Icon(Icons.person_add, size: 36, color: Colors.grey),
+                                          const SizedBox(height: 10),
+                                          Text(
+                                            "No trusted contacts added",
+                                            style: GoogleFonts.poppins(fontSize: 14, color: Colors.grey),
+                                          ),
+                                        ],
                                       ),
                                     ),
+                              const SizedBox(height: 10),
+                              Center(
+                                child: Container(
+                                  width: screenWidth * 0.6,
+                                  height: 45,
+                                  decoration: BoxDecoration(
+                                    gradient: const LinearGradient(
+                                      colors: [Color(0xFFF1EBFF), Color(0xFFEDEBFF)],
+                                    ),
+                                    borderRadius: BorderRadius.circular(12),
+                                    boxShadow: const [
+                                      BoxShadow(
+                                        color: Colors.black12,
+                                        blurRadius: 5,
+                                        offset: Offset(2, 4),
+                                      )
+                                    ],
                                   ),
-                                )
-                              ],
-                            ),
+                                  child: TextButton.icon(
+                                    onPressed: openManageContactsSheet,
+                                    icon: const Icon(Icons.manage_accounts, color: Colors.black),
+                                    label: Text(
+                                      "Manage contacts",
+                                      style: GoogleFonts.poppins(color: Colors.black),
+                                    ),
+                                    style: TextButton.styleFrom(
+                                      padding: const EdgeInsets.symmetric(horizontal: 10),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
                         ),
 
@@ -452,13 +466,16 @@ class _HomePageState extends State<HomePage> {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text("Recent Activities",
-                                    style: GoogleFonts.poppins(fontWeight: FontWeight.bold, fontSize: 16)),
+                                Text(
+                                  "Recent Activities",
+                                  style: GoogleFonts.poppins(fontWeight: FontWeight.bold, fontSize: 16),
+                                ),
                                 const SizedBox(height: 6),
-                                Text("your recent safety actions",
-                                    style: GoogleFonts.poppins(color: Colors.grey, fontSize: 13)),
+                                Text(
+                                  "your recent safety actions",
+                                  style: GoogleFonts.poppins(color: Colors.grey, fontSize: 13),
+                                ),
                                 const SizedBox(height: 20),
-
                                 if (showAllActivities)
                                   Column(
                                     children: recentActivities
@@ -475,11 +492,13 @@ class _HomePageState extends State<HomePage> {
                                       children: [
                                         const Icon(Icons.history, size: 36, color: Colors.grey),
                                         const SizedBox(height: 10),
-                                        Text("No data has found",
-                                            style: GoogleFonts.poppins(fontSize: 14, color: Colors.grey)),
+                                        Text(
+                                          "No data has found",
+                                          style: GoogleFonts.poppins(fontSize: 14, color: Colors.grey),
+                                        ),
                                       ],
                                     ),
-                                  )
+                                  ),
                               ],
                             ),
                           ),

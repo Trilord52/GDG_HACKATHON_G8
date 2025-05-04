@@ -32,7 +32,14 @@ class _HomeState extends State<Home> {
         },
         initialContacts: contacts,
       ),
-      MapPage(contacts: contacts),
+      MapPage(
+        contacts: contacts,
+        onContactsUpdated: (updatedContacts) {
+          setState(() {
+            contacts = updatedContacts;
+          });
+        },
+      ), // Added onContactsUpdated
       Alertpage(),
       Profilepage(),
     ]);

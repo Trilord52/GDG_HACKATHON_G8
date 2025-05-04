@@ -110,14 +110,16 @@ class LiveTrackerState extends State<LiveTracker> with AutomaticKeepAliveClientM
   void _startLocationUpdates() {
     if (_locationSubscription != null) return; // Already listening
     _locationSubscription = _location.onLocationChanged.listen((LocationData locationData) {
-      setState(() {
-        _currentLocation = locationData;
-        _isLoading = false;
-        _errorMessage = null;
-      });
-      // Fetch general location for the new coordinates
-      if (locationData.latitude != null && locationData.longitude != null) {
-        _fetchGeneralLocation(locationData.latitude!, locationData.longitude!);
+      if (mounted) { // Check if the widget is still mounted
+        setState(() {
+          _currentLocation = locationData;
+          _isLoading = false;
+          _errorMessage = null;
+        });
+        // Fetch general location for the new coordinates
+        if (locationData.latitude != null && locationData.longitude != null) {
+          _fetchGeneralLocation(locationData.latitude!, locationData.longitude!);
+        }
       }
     });
   }
@@ -140,18 +142,24 @@ class LiveTrackerState extends State<LiveTracker> with AutomaticKeepAliveClientM
         String generalLocation = addressParts.length > 2
             ? "${addressParts[0]}, ${addressParts[addressParts.length - 2]}" // e.g., "San Francisco, California"
             : displayName;
-        setState(() {
-          _generalLocation = generalLocation;
-        });
+        if (mounted) { // Check if the widget is still mounted
+          setState(() {
+            _generalLocation = generalLocation;
+          });
+        }
       } else {
-        setState(() {
-          _generalLocation = "Unable to fetch location name";
-        });
+        if (mounted) { // Check if the widget is still mounted
+          setState(() {
+            _generalLocation = "Unable to fetch location name";
+          });
+        }
       }
     } catch (e) {
-      setState(() {
-        _generalLocation = "Error fetching location name: $e";
-      });
+      if (mounted) { // Check if the widget is still mounted
+        setState(() {
+          _generalLocation = "Error fetching location name: $e";
+        });
+      }
     }
   }
 
@@ -208,7 +216,7 @@ class LiveTrackerState extends State<LiveTracker> with AutomaticKeepAliveClientM
 
   @override
   void dispose() {
-    _stopLocationUpdates();
+    _stopLocationUpdates(); // Ensure subscription is canceled
     super.dispose();
   }
 

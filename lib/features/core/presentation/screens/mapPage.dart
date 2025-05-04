@@ -5,9 +5,10 @@ import 'package:safe_campus/features/core/presentation/screens/liveTracker.dart'
 import 'package:safe_campus/features/core/presentation/screens/safetyMap.dart';
 
 class MapPage extends StatefulWidget {
-  final List<Map<String, String>> contacts; // Receive contacts from HomePage
+  final List<Map<String, String>> contacts;
+  final Function(List<Map<String, String>>) onContactsUpdated; // Added callback
 
-  const MapPage({super.key, required this.contacts});
+  const MapPage({super.key, required this.contacts, required this.onContactsUpdated});
 
   @override
   State<MapPage> createState() => _MapPageState();
@@ -15,12 +16,10 @@ class MapPage extends StatefulWidget {
 
 class _MapPageState extends State<MapPage> {
   final _safetyMapKey = GlobalKey<SafetyMapState>();
-  final _liveTrackerKey = GlobalKey<LiveTrackerState>(); // Key for LiveTracker
+  final _liveTrackerKey = GlobalKey<LiveTrackerState>();
 
   void _onUserCurrentLocation() {
-    // Switch to LiveTracker tab (index 0) and ensure location is updated
     DefaultTabController.of(context).animateTo(0);
-    // Since LiveTracker doesn't have a map, we just ensure the location is updated
     if (_liveTrackerKey.currentState?.getCurrentLocation() == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("Unable to get current location")),
@@ -31,7 +30,7 @@ class _MapPageState extends State<MapPage> {
   @override
   Widget build(BuildContext context) {
     return DefaultTabController(
-      length: 3, // Updated to 3 tabs
+      length: 3,
       child: Scaffold(
         appBar: AppBar(
           automaticallyImplyLeading: false,
@@ -59,7 +58,7 @@ class _MapPageState extends State<MapPage> {
               builder: (context) => IconButton(
                 icon: const Icon(Icons.report),
                 onPressed: () {
-                  DefaultTabController.of(context).index = 1; // Switch to SafetyMap tab (index 1)
+                  DefaultTabController.of(context).index = 1;
                   _safetyMapKey.currentState?.reportIncident();
                 },
                 tooltip: "Report Incident",
@@ -69,7 +68,7 @@ class _MapPageState extends State<MapPage> {
               builder: (context) => IconButton(
                 icon: const Icon(Icons.share),
                 onPressed: () {
-                  DefaultTabController.of(context).index = 1; // Switch to SafetyMap tab (index 1)
+                  DefaultTabController.of(context).index = 1;
                   _safetyMapKey.currentState?.shareRoute();
                 },
                 tooltip: "Share Route",
@@ -79,15 +78,16 @@ class _MapPageState extends State<MapPage> {
         ),
         body: TabBarView(
           children: [
-            LiveTracker(key: _liveTrackerKey), // Use the key for LiveTracker
+            LiveTracker(key: _liveTrackerKey),
             SafetyMap(
               key: _safetyMapKey,
               onReportIncident: () => _safetyMapKey.currentState?.reportIncident(),
               onShareRoute: () => _safetyMapKey.currentState?.shareRoute(),
               onUserCurrentLocation: () => _safetyMapKey.currentState?.userCurrentLocation(),
-              contacts: widget.contacts, // Pass contacts to SafetyMap
+              contacts: widget.contacts,
+              onContactsUpdated: widget.onContactsUpdated, // Pass the callback
             ),
-            Container(), // Placeholder for Alerts tab
+            Container(),
           ],
         ),
         floatingActionButton: Builder(

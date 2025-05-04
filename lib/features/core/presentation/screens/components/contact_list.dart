@@ -7,14 +7,22 @@ class ContactList extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      children: contacts
-          .map((contact) => ListTile(
-                leading: const Icon(Icons.person),
-                title: Text(contact['name'] ?? ''),
-                subtitle: Text(contact['phone'] ?? ''),
-              ))
-          .toList(),
+    return ListView.builder(
+      shrinkWrap: true,
+      physics: NeverScrollableScrollPhysics(),
+      itemCount: contacts.length,
+      itemBuilder: (context, index) {
+        final contact = contacts[index];
+        return ListTile(
+          leading: CircleAvatar(
+            backgroundColor: Colors.grey[300],
+            child: Icon(Icons.person, color: Colors.grey[700]),
+          ),
+          title: Text(contact['name'] ?? '', style: TextStyle(fontSize: 16)),
+          subtitle: Text(contact['phone'] ?? '', style: TextStyle(fontSize: 14)),
+          contentPadding: EdgeInsets.symmetric(vertical: 4.0, horizontal: 16.0),
+        );
+      },
     );
   }
 }

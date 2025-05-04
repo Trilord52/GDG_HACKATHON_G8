@@ -8,17 +8,22 @@ import 'package:latlong2/latlong.dart';
 import 'package:location/location.dart';
 import 'package:http/http.dart' as http;
 import 'package:image_picker/image_picker.dart';
-import 'package:uuid/uuid.dart';
-import 'package:google_fonts/google_fonts.dart';
+import 'package:safe_campus/features/core/presentation/screens/components/contact_form_bottom_sheet.dart';
 import 'package:safe_campus/features/core/presentation/screens/components/contact_list.dart';
-// Enum for tracking states (already at top level)
+import 'package:uuid/uuid.dart';
+
+import 'package:google_fonts/google_fonts.dart';
+import 'package:safe_campus/features/core/presentation/screens/HomePage.dart';
+
+// Enum for tracking states
 enum TrackingState { stopped, paused, active }
 
 class SafetyMap extends StatefulWidget {
   final VoidCallback onReportIncident;
   final VoidCallback onShareRoute;
   final VoidCallback onUserCurrentLocation;
-  final List<Map<String, String>> contacts; // Pass contacts from HomePage
+  final List<Map<String, String>> contacts;
+  final Function(List<Map<String, String>>) onContactsUpdated; // Added callback
 
   const SafetyMap({
     super.key,
@@ -26,6 +31,7 @@ class SafetyMap extends StatefulWidget {
     required this.onShareRoute,
     required this.onUserCurrentLocation,
     required this.contacts,
+    required this.onContactsUpdated, // Required parameter
   });
 
   @override
@@ -48,12 +54,9 @@ class SafetyMapState extends State<SafetyMap> with AutomaticKeepAliveClientMixin
   String? _shareToken;
   final uuid = Uuid();
   XFile? _selectedMedia;
-  bool _isTrackingActive = false; // Renamed for clarity
-  TrackingState _trackingState = TrackingState.stopped; // Use top-level enum
+  TrackingState _trackingState = TrackingState.stopped;
   StreamSubscription<LocationData>? _locationSubscription;
-  String? _errorMessage; // To store error messages for display
-
-  // Fallback location (San Francisco) if current location cannot be obtained
+  String? _errorMessage;
   final LatLng _fallbackLocation = LatLng(37.7749, -122.4194);
 
   @override
@@ -69,7 +72,6 @@ class SafetyMapState extends State<SafetyMap> with AutomaticKeepAliveClientMixin
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    // Ensure tab state doesn’t auto-start tracking
   }
 
   Future<void> _initializeLocation() async {
@@ -82,10 +84,8 @@ class SafetyMapState extends State<SafetyMap> with AutomaticKeepAliveClientMixin
       return;
     }
 
-    // Start listening for location updates immediately
     _startLocationUpdates();
 
-    // Try to get the initial location
     try {
       LocationData? initialLocation = await _location.getLocation().timeout(Duration(seconds: 10));
       if (initialLocation.latitude != null && initialLocation.longitude != null) {
@@ -109,7 +109,7 @@ class SafetyMapState extends State<SafetyMap> with AutomaticKeepAliveClientMixin
   }
 
   void _startLocationUpdates() {
-    if (_locationSubscription != null) return; // Already listening
+    if (_locationSubscription != null) return;
     _locationSubscription = _location.onLocationChanged.listen((LocationData locationData) {
       if (locationData.latitude != null && locationData.longitude != null) {
         setState(() {
@@ -381,7 +381,7 @@ class SafetyMapState extends State<SafetyMap> with AutomaticKeepAliveClientMixin
 
   void _checkForNearbyIncidents() {
     if (_currentLocation == null) return;
-    const double alertRadius = 0.5; // 500 meters
+    const double alertRadius = 0.5;
     final distance = Distance();
     for (var incident in _incidentReports) {
       final incidentLocation = incident['location'] as LatLng?;
@@ -403,32 +403,77 @@ class SafetyMapState extends State<SafetyMap> with AutomaticKeepAliveClientMixin
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      builder: (context) => Container(
-        padding: const EdgeInsets.all(16),
+      backgroundColor: Colors.white,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) => Padding(
+        padding: const EdgeInsets.all(16.0),
         child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
           children: [
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
-                  "Viewers",
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  "Alerts and Watching",
+                  style: GoogleFonts.poppins(fontSize: 18, fontWeight: FontWeight.bold),
                 ),
                 IconButton(
-                  icon: const Icon(Icons.close),
+                  icon: Icon(Icons.close, color: Colors.grey),
                   onPressed: () => Navigator.pop(context),
                 ),
               ],
             ),
-            const SizedBox(height: 10),
+            SizedBox(height: 8),
+            Text(
+              "these people can see your real-time location",
+              style: GoogleFonts.poppins(fontSize: 14, color: Colors.grey),
+            ),
+            SizedBox(height: 16),
             Expanded(
               child: ContactList(contacts: widget.contacts),
             ),
+            SizedBox(height: 16),
+            ElevatedButton(
+              onPressed: () {
+                Navigator.pop(context); // Close sidebar
+                _openManageContactsSheet(context);
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.blue,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                padding: EdgeInsets.symmetric(vertical: 12),
+              ),
+              child: Text(
+                "Manage Contacts",
+                style: GoogleFonts.poppins(color: Colors.white, fontSize: 16),
+              ),
+            ),
+            SizedBox(height: 16),
           ],
         ),
       ),
     );
+  }
+
+  void _openManageContactsSheet(BuildContext context) async {
+    final result = await showModalBottomSheet<Map<String, String>>(
+      context: context,
+      isScrollControlled: true,
+      builder: (context) => ContactFormBottomSheet(
+        onSave: (name, phone) {
+          Navigator.of(context).pop({'name': name, 'phone': phone});
+        },
+      ),
+    );
+
+    if (result != null && mounted) {
+      List<Map<String, String>> updatedContacts = List.from(widget.contacts);
+      updatedContacts.add(result);
+      widget.onContactsUpdated(updatedContacts); // Use the callback to update contacts
+    }
   }
 
   @override
@@ -441,7 +486,7 @@ class SafetyMapState extends State<SafetyMap> with AutomaticKeepAliveClientMixin
 
   @override
   Widget build(BuildContext context) {
-    super.build(context); // Required for AutomaticKeepAliveClientMixin
+    super.build(context);
     return Scaffold(
       body: isLoading
           ? const Center(child: CircularProgressIndicator())
@@ -534,53 +579,72 @@ class SafetyMapState extends State<SafetyMap> with AutomaticKeepAliveClientMixin
                   ),
                 ),
                 Positioned(
-                  bottom: 80, // Adjusted for FAB in Home
+                  bottom: 80,
                   left: 16,
                   right: 16,
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                    children: [
-                      ElevatedButton(
-                        onPressed: _toggleTracking,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: _trackingState == TrackingState.active
-                              ? Color(0xFF1976D2) // Blue for active
-                              : Color(0xFF9E9E9E), // Grey for paused/stopped
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(10),
+                  child: Container(
+                    padding: EdgeInsets.all(8.0),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(10),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.grey.withOpacity(0.3),
+                          spreadRadius: 2,
+                          blurRadius: 5,
+                          offset: Offset(0, 3),
+                        ),
+                      ],
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                      children: [
+                        ElevatedButton(
+                          onPressed: _toggleTracking,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: _trackingState == TrackingState.active
+                                ? Colors.blue
+                                : _trackingState == TrackingState.paused
+                                    ? Colors.orange
+                                    : Colors.grey,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            padding: EdgeInsets.symmetric(vertical: 12, horizontal: 16),
                           ),
-                          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-                        ),
-                        child: Text(
-                          _trackingState == TrackingState.active
-                              ? 'Pause Tracking'
-                              : 'Start Tracking',
-                          style: GoogleFonts.poppins(fontSize: 14, color: Colors.white),
-                        ),
-                      ),
-                      ElevatedButton(
-                        onPressed: _stopTracking,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Color(0xFFD32F2F), // Red for stop
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(10),
+                          child: Text(
+                            _trackingState == TrackingState.active
+                                ? 'Pause Tracking'
+                                : _trackingState == TrackingState.paused
+                                    ? 'Resume Tracking'
+                                    : 'Start Tracking',
+                            style: GoogleFonts.poppins(fontSize: 14, color: Colors.white),
                           ),
-                          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
                         ),
-                        child: Text(
-                          'Stop Tracking',
-                          style: GoogleFonts.poppins(fontSize: 14, color: Colors.white),
+                        ElevatedButton(
+                          onPressed: _stopTracking,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.red,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            padding: EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                          ),
+                          child: Text(
+                            'Stop Tracking',
+                            style: GoogleFonts.poppins(fontSize: 14, color: Colors.white),
+                          ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
                 Positioned(
                   bottom: 16,
-                  right: 16,
+                  left: 16,
                   child: FloatingActionButton(
                     onPressed: _showViewers,
-                    backgroundColor: Color(0xFF1976D2), // Blue from theme
+                    backgroundColor: Colors.purple,
                     child: Icon(Icons.people, color: Colors.white),
                     tooltip: 'Viewers',
                   ),
