@@ -4,8 +4,17 @@ import 'components/report_incident_bottom_sheet.dart';
 import 'components/share_route_bottom_sheet.dart';
 import 'components/contact_form_bottom_sheet.dart';
 import 'package:safe_campus/features/core/presentation/screens/mapPage.dart';
+import 'package:safe_campus/features/core/presentation/screens/components/contact_list.dart';
+
 class HomePage extends StatefulWidget {
-  const HomePage({super.key});
+  final List<Map<String, String>> initialContacts; // Accept initial contacts
+  final Function(List<Map<String, String>>) onContactsUpdated; // Callback to update contacts
+
+  const HomePage({
+    super.key,
+    required this.initialContacts,
+    required this.onContactsUpdated,
+  });
 
   @override
   State<HomePage> createState() => _HomePageState();
@@ -13,7 +22,6 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   List<Map<String, String>> recentActivities = [];
-  List<Map<String, String>> contacts = [];
   bool showAllContacts = false;
   bool showAllActivities = false;
 
@@ -143,7 +151,9 @@ class _HomePageState extends State<HomePage> {
                       Navigator.pop(context);
                       Navigator.push(
                         context,
-                        MaterialPageRoute(builder: (context) => const MapPage()),
+                        MaterialPageRoute(
+                          builder: (context) => MapPage(contacts: widget.initialContacts),
+                        ),
                       );
                     },
                     style: ElevatedButton.styleFrom(
@@ -183,7 +193,9 @@ class _HomePageState extends State<HomePage> {
 
     if (result != null && mounted) {
       setState(() {
-        contacts.add(result);
+        List<Map<String, String>> updatedContacts = List.from(widget.initialContacts);
+        updatedContacts.add(result);
+        widget.onContactsUpdated(updatedContacts); // Notify parent of the update
       });
     }
   }
@@ -382,7 +394,7 @@ class _HomePageState extends State<HomePage> {
 
                                 if (showAllContacts)
                                   Column(
-                                    children: contacts
+                                    children: widget.initialContacts
                                         .map((c) => ListTile(
                                               title: Text(c['name'] ?? '', style: GoogleFonts.poppins()),
                                               subtitle: Text(c['phone'] ?? '',
@@ -484,4 +496,3 @@ class _HomePageState extends State<HomePage> {
     );
   }
 }
-

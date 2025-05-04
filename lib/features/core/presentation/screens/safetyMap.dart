@@ -10,17 +10,22 @@ import 'package:http/http.dart' as http;
 import 'package:image_picker/image_picker.dart';
 import 'package:uuid/uuid.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:safe_campus/features/core/presentation/screens/components/contact_list.dart';
+// Enum for tracking states (already at top level)
+enum TrackingState { stopped, paused, active }
 
 class SafetyMap extends StatefulWidget {
   final VoidCallback onReportIncident;
   final VoidCallback onShareRoute;
   final VoidCallback onUserCurrentLocation;
+  final List<Map<String, String>> contacts; // Pass contacts from HomePage
 
   const SafetyMap({
     super.key,
     required this.onReportIncident,
     required this.onShareRoute,
     required this.onUserCurrentLocation,
+    required this.contacts,
   });
 
   @override
@@ -43,8 +48,13 @@ class SafetyMapState extends State<SafetyMap> with AutomaticKeepAliveClientMixin
   String? _shareToken;
   final uuid = Uuid();
   XFile? _selectedMedia;
-  bool _isActive = false;
+  bool _isTrackingActive = false; // Renamed for clarity
+  TrackingState _trackingState = TrackingState.stopped; // Use top-level enum
   StreamSubscription<LocationData>? _locationSubscription;
+  String? _errorMessage; // To store error messages for display
+
+  // Fallback location (San Francisco) if current location cannot be obtained
+  final LatLng _fallbackLocation = LatLng(37.7749, -122.4194);
 
   @override
   bool get wantKeepAlive => true;
@@ -59,29 +69,42 @@ class SafetyMapState extends State<SafetyMap> with AutomaticKeepAliveClientMixin
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    final newIsActive = DefaultTabController.of(context).index == 0; // SafetyMap is at index 0
-    if (_isActive != newIsActive) {
-      setState(() {
-        _isActive = newIsActive;
-      });
-      if (_isActive) {
-        _startLocationUpdates();
-      } else {
-        _stopLocationUpdates();
-      }
-    }
+    // Ensure tab state doesn’t auto-start tracking
   }
 
   Future<void> _initializeLocation() async {
-    if (!await _checkTheRequestPermission()) {
+    bool permissionGranted = await _checkTheRequestPermission();
+    if (!permissionGranted) {
       setState(() {
         isLoading = false;
+        _errorMessage = "Location permissions denied or service disabled.";
       });
       return;
     }
 
-    if (_isActive) {
-      _startLocationUpdates();
+    // Start listening for location updates immediately
+    _startLocationUpdates();
+
+    // Try to get the initial location
+    try {
+      LocationData? initialLocation = await _location.getLocation().timeout(Duration(seconds: 10));
+      if (initialLocation.latitude != null && initialLocation.longitude != null) {
+        setState(() {
+          _currentLocation = LatLng(initialLocation.latitude!, initialLocation.longitude!);
+          isLoading = false;
+          _errorMessage = null;
+        });
+      } else {
+        setState(() {
+          isLoading = false;
+          _errorMessage = "Unable to get initial location.";
+        });
+      }
+    } catch (e) {
+      setState(() {
+        isLoading = false;
+        _errorMessage = "Error getting initial location: $e";
+      });
     }
   }
 
@@ -92,6 +115,7 @@ class SafetyMapState extends State<SafetyMap> with AutomaticKeepAliveClientMixin
         setState(() {
           _currentLocation = LatLng(locationData.latitude!, locationData.longitude!);
           isLoading = false;
+          _errorMessage = null;
         });
         _checkForNearbyIncidents();
       }
@@ -103,15 +127,41 @@ class SafetyMapState extends State<SafetyMap> with AutomaticKeepAliveClientMixin
     _locationSubscription = null;
   }
 
+  void _pauseLocationUpdates() {
+    _locationSubscription?.pause();
+  }
+
+  void _resumeLocationUpdates() {
+    _locationSubscription?.resume();
+  }
+
   void _toggleTracking() {
     setState(() {
-      _isActive = !_isActive;
+      switch (_trackingState) {
+        case TrackingState.stopped:
+          _trackingState = TrackingState.active;
+          _startLocationUpdates();
+          break;
+        case TrackingState.active:
+          _trackingState = TrackingState.paused;
+          _pauseLocationUpdates();
+          break;
+        case TrackingState.paused:
+          _trackingState = TrackingState.active;
+          _resumeLocationUpdates();
+          break;
+      }
     });
-    if (_isActive) {
-      _startLocationUpdates();
-    } else {
+    if (_trackingState == TrackingState.stopped) {
       _stopLocationUpdates();
     }
+  }
+
+  void _stopTracking() {
+    setState(() {
+      _trackingState = TrackingState.stopped;
+      _stopLocationUpdates();
+    });
   }
 
   Future<void> fetchCoordinatesPoint(String location) async {
@@ -166,13 +216,23 @@ class SafetyMapState extends State<SafetyMap> with AutomaticKeepAliveClientMixin
     bool serviceEnabled = await _location.serviceEnabled();
     if (!serviceEnabled) {
       serviceEnabled = await _location.requestService();
-      if (!serviceEnabled) return false;
+      if (!serviceEnabled) {
+        setState(() {
+          _errorMessage = "Location service is disabled.";
+        });
+        return false;
+      }
     }
 
     PermissionStatus permissionGranted = await _location.hasPermission();
     if (permissionGranted == PermissionStatus.denied) {
       permissionGranted = await _location.requestPermission();
-      if (permissionGranted != PermissionStatus.granted) return false;
+      if (permissionGranted != PermissionStatus.granted) {
+        setState(() {
+          _errorMessage = "Location permission denied.";
+        });
+        return false;
+      }
     }
     return true;
   }
@@ -339,6 +399,38 @@ class SafetyMapState extends State<SafetyMap> with AutomaticKeepAliveClientMixin
     }
   }
 
+  void _showViewers() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      builder: (context) => Container(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  "Viewers",
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.close),
+                  onPressed: () => Navigator.pop(context),
+                ),
+              ],
+            ),
+            const SizedBox(height: 10),
+            Expanded(
+              child: ContactList(contacts: widget.contacts),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   void dispose() {
     _stopLocationUpdates();
@@ -350,25 +442,25 @@ class SafetyMapState extends State<SafetyMap> with AutomaticKeepAliveClientMixin
   @override
   Widget build(BuildContext context) {
     super.build(context); // Required for AutomaticKeepAliveClientMixin
-    return isLoading
-        ? const Center(child: CircularProgressIndicator())
-        : _currentLocation == null
-            ? const Center(child: Text('Unable to get current location'))
-            : Stack(
-                children: [
-                  FlutterMap(
-                    mapController: _mapController,
-                    options: MapOptions(
-                      initialCenter: _currentLocation!,
-                      initialZoom: 15,
-                      minZoom: 0,
-                      maxZoom: 18,
+    return Scaffold(
+      body: isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : Stack(
+              children: [
+                FlutterMap(
+                  mapController: _mapController,
+                  options: MapOptions(
+                    initialCenter: _currentLocation ?? _fallbackLocation,
+                    initialZoom: 15,
+                    minZoom: 0,
+                    maxZoom: 18,
+                  ),
+                  children: [
+                    TileLayer(
+                      urlTemplate: "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
+                      userAgentPackageName: 'com.example.safecampus',
                     ),
-                    children: [
-                      TileLayer(
-                        urlTemplate: "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
-                        userAgentPackageName: 'com.example.safecampus',
-                      ),
+                    if (_currentLocation != null)
                       CurrentLocationLayer(
                         style: LocationMarkerStyle(
                           marker: DefaultLocationMarker(
@@ -382,67 +474,119 @@ class SafetyMapState extends State<SafetyMap> with AutomaticKeepAliveClientMixin
                           markerDirection: MarkerDirection.heading,
                         ),
                       ),
-                      PolylineLayer(
-                        polylines: [
-                          Polyline(
-                            points: _route,
-                            strokeWidth: 4.0,
-                            color: Colors.blue,
+                    PolylineLayer(
+                      polylines: [
+                        Polyline(
+                          points: _route,
+                          strokeWidth: 4.0,
+                          color: Colors.blue,
+                        ),
+                      ],
+                    ),
+                    MarkerLayer(
+                      markers: _incidentReports
+                          .map((incident) => Marker(
+                                point: incident['location'] as LatLng,
+                                width: 30,
+                                height: 30,
+                                child: Icon(
+                                  Icons.warning,
+                                  color: Colors.red,
+                                  size: 30,
+                                ),
+                              ))
+                          .toList(),
+                    ),
+                  ],
+                ),
+                Positioned(
+                  top: 16,
+                  left: 16,
+                  right: 16,
+                  child: Column(
+                    children: [
+                      TextField(
+                        controller: _locationController,
+                        decoration: InputDecoration(
+                          hintText: "Enter destination",
+                          filled: true,
+                          fillColor: Colors.white,
+                          border: OutlineInputBorder(),
+                          suffixIcon: IconButton(
+                            icon: Icon(Icons.search),
+                            onPressed: () => fetchCoordinatesPoint(_locationController.text),
                           ),
-                        ],
+                        ),
                       ),
-                      MarkerLayer(
-                        markers: _incidentReports
-                            .map((incident) => Marker(
-                                  point: incident['location'] as LatLng,
-                                  width: 30,
-                                  height: 30,
-                                  child: Icon(
-                                    Icons.warning,
-                                    color: Colors.red,
-                                    size: 30,
-                                  ),
-                                ))
-                            .toList(),
+                      if (_errorMessage != null)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 8.0),
+                          child: Text(
+                            _errorMessage!,
+                            style: GoogleFonts.poppins(
+                              color: Colors.red,
+                              fontSize: 14,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+                Positioned(
+                  bottom: 80, // Adjusted for FAB in Home
+                  left: 16,
+                  right: 16,
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    children: [
+                      ElevatedButton(
+                        onPressed: _toggleTracking,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: _trackingState == TrackingState.active
+                              ? Color(0xFF1976D2) // Blue for active
+                              : Color(0xFF9E9E9E), // Grey for paused/stopped
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                        ),
+                        child: Text(
+                          _trackingState == TrackingState.active
+                              ? 'Pause Tracking'
+                              : 'Start Tracking',
+                          style: GoogleFonts.poppins(fontSize: 14, color: Colors.white),
+                        ),
+                      ),
+                      ElevatedButton(
+                        onPressed: _stopTracking,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Color(0xFFD32F2F), // Red for stop
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                        ),
+                        child: Text(
+                          'Stop Tracking',
+                          style: GoogleFonts.poppins(fontSize: 14, color: Colors.white),
+                        ),
                       ),
                     ],
                   ),
-                  Positioned(
-                    top: 16,
-                    left: 16,
-                    right: 16,
-                    child: TextField(
-                      controller: _locationController,
-                      decoration: InputDecoration(
-                        hintText: "Enter destination",
-                        filled: true,
-                        fillColor: Colors.white,
-                        border: OutlineInputBorder(),
-                        suffixIcon: IconButton(
-                          icon: Icon(Icons.search),
-                          onPressed: () => fetchCoordinatesPoint(_locationController.text),
-                        ),
-                      ),
-                    ),
+                ),
+                Positioned(
+                  bottom: 16,
+                  right: 16,
+                  child: FloatingActionButton(
+                    onPressed: _showViewers,
+                    backgroundColor: Color(0xFF1976D2), // Blue from theme
+                    child: Icon(Icons.people, color: Colors.white),
+                    tooltip: 'Viewers',
                   ),
-                  Positioned(
-                    bottom: 16,
-                    left: 16,
-                    right: 16,
-                    child: FloatingActionButton.extended(
-                      onPressed: _toggleTracking,
-                      backgroundColor: _isActive ? Colors.red : Colors.green,
-                      label: Text(
-                        _isActive ? 'Stop Tracking' : 'Start Tracking',
-                        style: GoogleFonts.poppins(fontSize: 16, color: Colors.white),
-                      ),
-                      icon: Icon(
-                        _isActive ? Icons.stop : Icons.play_arrow,
-                        color: Colors.white,
-                      ),
-                    ),
-                  ),
-                ],
-              );
+                ),
+              ],
+            ),
+    );
   }
 }

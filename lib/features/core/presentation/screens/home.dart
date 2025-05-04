@@ -15,12 +15,28 @@ class Home extends StatefulWidget {
 }
 
 class _HomeState extends State<Home> {
-  final List pages = [
-    HomePage(),
-    MapPage(),
-    Alertpage(),
-    Profilepage(),
-  ];
+  List<Map<String, String>> contacts = []; // Lifted contacts state to Home
+
+  final List<Widget> pages = []; // Will initialize in initState
+
+  @override
+  void initState() {
+    super.initState();
+    // Initialize pages with contacts
+    pages.addAll([
+      HomePage(
+        onContactsUpdated: (updatedContacts) {
+          setState(() {
+            contacts = updatedContacts;
+          });
+        },
+        initialContacts: contacts,
+      ),
+      MapPage(contacts: contacts),
+      Alertpage(),
+      Profilepage(),
+    ]);
+  }
 
   void openDialogeBox() {
     showDialog(
@@ -80,7 +96,7 @@ class _HomeState extends State<Home> {
     return BlocBuilder<NavigationCubit, int>(
       builder: (context, selectedIndex) {
         return Scaffold(
-          body: pages[selectedIndex], // <- THIS LINE ADDED
+          body: pages[selectedIndex],
           floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
           floatingActionButton: FloatingActionButton(
             onPressed: openDialogeBox,

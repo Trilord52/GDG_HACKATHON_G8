@@ -1,17 +1,19 @@
 import 'dart:async';
-
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:location/location.dart';
 import 'package:uuid/uuid.dart';
+import 'package:http/http.dart' as http;
+import 'package:safe_campus/features/core/presentation/screens/safetyMap.dart';
 
 class LiveTracker extends StatefulWidget {
   const LiveTracker({super.key});
 
   @override
-  State<LiveTracker> createState() => _LiveTrackerState();
+  State<LiveTracker> createState() => LiveTrackerState();
 }
 
-class _LiveTrackerState extends State<LiveTracker> with AutomaticKeepAliveClientMixin {
+class LiveTrackerState extends State<LiveTracker> with AutomaticKeepAliveClientMixin {
   final Location _location = Location();
   final uuid = Uuid();
   LocationData? _currentLocation;
@@ -19,6 +21,8 @@ class _LiveTrackerState extends State<LiveTracker> with AutomaticKeepAliveClient
   String? _shareToken;
   bool _isActive = false;
   StreamSubscription<LocationData>? _locationSubscription;
+  String? _generalLocation; // To store the reverse-geocoded location
+  String? _errorMessage; // To store error messages for display
 
   @override
   bool get wantKeepAlive => true;
@@ -32,7 +36,8 @@ class _LiveTrackerState extends State<LiveTracker> with AutomaticKeepAliveClient
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    final newIsActive = DefaultTabController.of(context).index == 1; // LiveTracker is now at index 1
+    // Check if this tab is active (LiveTracker is at index 0 in map_page.dart)
+    final newIsActive = DefaultTabController.of(context).index == 0;
     if (_isActive != newIsActive) {
       setState(() {
         _isActive = newIsActive;
@@ -56,6 +61,7 @@ class _LiveTrackerState extends State<LiveTracker> with AutomaticKeepAliveClient
       if (!serviceEnabled) {
         setState(() {
           _isLoading = false;
+          _errorMessage = "Location service is disabled.";
         });
         return;
       }
@@ -68,14 +74,36 @@ class _LiveTrackerState extends State<LiveTracker> with AutomaticKeepAliveClient
       if (permissionGranted != PermissionStatus.granted) {
         setState(() {
           _isLoading = false;
+          _errorMessage = "Location permission denied.";
         });
         return;
       }
     }
 
-    // Start listening if the tab is active
-    if (_isActive) {
-      _startLocationUpdates();
+    // Start listening for location updates immediately
+    _startLocationUpdates();
+
+    // Fetch initial location
+    try {
+      LocationData? initialLocation = await _location.getLocation().timeout(Duration(seconds: 10));
+      if (initialLocation.latitude != null && initialLocation.longitude != null) {
+        setState(() {
+          _currentLocation = initialLocation;
+          _isLoading = false;
+          _errorMessage = null;
+        });
+        _fetchGeneralLocation(initialLocation.latitude!, initialLocation.longitude!);
+      } else {
+        setState(() {
+          _isLoading = false;
+          _errorMessage = "Unable to get initial location.";
+        });
+      }
+    } catch (e) {
+      setState(() {
+        _isLoading = false;
+        _errorMessage = "Error getting initial location: $e";
+      });
     }
   }
 
@@ -85,13 +113,46 @@ class _LiveTrackerState extends State<LiveTracker> with AutomaticKeepAliveClient
       setState(() {
         _currentLocation = locationData;
         _isLoading = false;
+        _errorMessage = null;
       });
+      // Fetch general location for the new coordinates
+      if (locationData.latitude != null && locationData.longitude != null) {
+        _fetchGeneralLocation(locationData.latitude!, locationData.longitude!);
+      }
     });
   }
 
   void _stopLocationUpdates() {
     _locationSubscription?.cancel();
     _locationSubscription = null;
+  }
+
+  Future<void> _fetchGeneralLocation(double latitude, double longitude) async {
+    final url = Uri.parse(
+        "https://nominatim.openstreetmap.org/reverse?lat=$latitude&lon=$longitude&format=json");
+    try {
+      final response = await http.get(url);
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        String displayName = data['display_name'] ?? 'Unknown location';
+        // Extract a more concise location (e.g., city or area)
+        List<String> addressParts = displayName.split(', ');
+        String generalLocation = addressParts.length > 2
+            ? "${addressParts[0]}, ${addressParts[addressParts.length - 2]}" // e.g., "San Francisco, California"
+            : displayName;
+        setState(() {
+          _generalLocation = generalLocation;
+        });
+      } else {
+        setState(() {
+          _generalLocation = "Unable to fetch location name";
+        });
+      }
+    } catch (e) {
+      setState(() {
+        _generalLocation = "Error fetching location name: $e";
+      });
+    }
   }
 
   void _shareRoute() {
@@ -140,6 +201,11 @@ class _LiveTrackerState extends State<LiveTracker> with AutomaticKeepAliveClient
     );
   }
 
+  // Method to allow external widgets (e.g., map_page.dart) to request the current location
+  LocationData? getCurrentLocation() {
+    return _currentLocation;
+  }
+
   @override
   void dispose() {
     _stopLocationUpdates();
@@ -162,11 +228,28 @@ class _LiveTrackerState extends State<LiveTracker> with AutomaticKeepAliveClient
           if (_isLoading)
             const Center(child: CircularProgressIndicator())
           else if (_currentLocation == null)
-            const Center(child: Text("Unable to get current location"))
+            Center(
+              child: Column(
+                children: [
+                  const Text(
+                    "Unable to get current location",
+                    style: TextStyle(fontSize: 16),
+                  ),
+                  if (_errorMessage != null) ...[
+                    const SizedBox(height: 8),
+                    Text(
+                      _errorMessage!,
+                      style: const TextStyle(fontSize: 14, color: Colors.red),
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
+                ],
+              ),
+            )
           else ...[
-            Text(
+            const Text(
               "Current Location:",
-              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w500),
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w500),
             ),
             const SizedBox(height: 8),
             Text(
@@ -177,6 +260,17 @@ class _LiveTrackerState extends State<LiveTracker> with AutomaticKeepAliveClient
               "Longitude: ${_currentLocation!.longitude}",
               style: const TextStyle(fontSize: 16),
             ),
+            const SizedBox(height: 8),
+            if (_generalLocation != null)
+              Text(
+                "Location: $_generalLocation",
+                style: const TextStyle(fontSize: 16, color: Colors.blueGrey),
+              )
+            else
+              const Text(
+                "Fetching location name...",
+                style: TextStyle(fontSize: 16, color: Colors.grey),
+              ),
             const SizedBox(height: 16),
             if (_shareToken != null) ...[
               Text(
