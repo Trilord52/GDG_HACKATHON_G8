@@ -5,6 +5,10 @@ import 'components/share_route_bottom_sheet.dart';
 import 'components/contact_form_bottom_sheet.dart';
 import 'package:safe_campus/features/core/presentation/screens/mapPage.dart';
 import 'package:safe_campus/features/core/presentation/screens/components/contact_list.dart';
+import 'dart:async';
+import 'admin_page.dart';
+import 'security_page.dart';
+import 'adm_sec_login_page.dart';
 
 class HomePage extends StatefulWidget {
   final List<Map<String, String>> initialContacts; // Accept initial contacts
@@ -22,7 +26,38 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   List<Map<String, String>> recentActivities = [];
-  bool showAllActivities = false; // Only keep toggle for Recent Activities
+  List<Map<String, String>> contacts = [];
+  bool showAllActivities = false;
+  bool isEmergencyMode = false;
+  Timer? _sosPulseTimer;
+
+  @override
+  void initState() {
+    super.initState();
+    contacts = widget.initialContacts;
+  }
+
+  @override
+  void dispose() {
+    _sosPulseTimer?.cancel();
+    super.dispose();
+  }
+
+  void _startSOSMode() {
+    setState(() {
+      isEmergencyMode = true;
+    });
+    _sosPulseTimer = Timer.periodic(const Duration(milliseconds: 1000), (timer) {
+      setState(() {});
+    });
+  }
+
+  void _stopSOSMode() {
+    setState(() {
+      isEmergencyMode = false;
+    });
+    _sosPulseTimer?.cancel();
+  }
 
   void openReportIncidentSheet() async {
     final result = await showModalBottomSheet<Map<String, String>>(
@@ -35,9 +70,13 @@ class _HomePageState extends State<HomePage> {
       ),
     );
 
-    if (result != null) {
+    if (result != null && mounted) {
       setState(() {
-        recentActivities.add(result);
+        recentActivities.insert(0, {
+          'name': result['name'] ?? '',
+          'description': result['description'] ?? '',
+          'timestamp': DateTime.now().toString(),
+        });
       });
     }
   }
@@ -187,8 +226,12 @@ class _HomePageState extends State<HomePage> {
       context: context,
       isScrollControlled: true,
       builder: (context) => ContactFormBottomSheet(
-        onSave: (name, phone) {
-          Navigator.of(context).pop({'name': name, 'phone': phone});
+        onSave: (name, phone, email) {
+          Navigator.of(context).pop({
+            'name': name,
+            'phone': phone,
+            'email': email,
+          });
         },
       ),
     );
@@ -200,6 +243,80 @@ class _HomePageState extends State<HomePage> {
         widget.onContactsUpdated(updatedContacts); // Notify parent of the update
       });
     }
+  }
+
+  void deleteContact(int index) {
+    setState(() {
+      List<Map<String, String>> updatedContacts = List.from(widget.initialContacts);
+      updatedContacts.removeAt(index);
+      widget.onContactsUpdated(updatedContacts);
+    });
+  }
+
+  void openDialogeBox() {
+    if (isEmergencyMode) {
+      _stopSOSMode();
+      return;
+    }
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: Colors.white,
+        title: Text(
+          "Confirm your request",
+          style: GoogleFonts.poppins(
+            fontWeight: FontWeight.w500,
+            fontSize: 22,
+          ),
+        ),
+        content: SizedBox(
+          height: 280,
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Image.asset('assets/images/alert1.png'),
+              Text(
+                "The alert will be sent to security personnel and trusted contacts with your location and personal information. Make sure you made the right request before sending alert!",
+                style: GoogleFonts.poppins(),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.of(context).pop();
+            },
+            child: Text("Cancel"),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.of(context).pop();
+              _startSOSMode();
+              // Notify trusted contacts and security
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text("Emergency alert sent to trusted contacts and security personnel!"),
+                  backgroundColor: Colors.red,
+                  duration: Duration(seconds: 3),
+                ),
+              );
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+            ),
+            child: Text(
+              "Send Alert",
+              style: GoogleFonts.poppins(color: Colors.white),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   Widget buildRoundedIconButton({
@@ -243,12 +360,129 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
+  Widget buildRecentActivities() {
+    final activitiesToShow = showAllActivities ? recentActivities : 
+        recentActivities.take(3).toList();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              "Recent Activities",
+              style: GoogleFonts.poppins(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            if (recentActivities.length > 3)
+              TextButton(
+                onPressed: () {
+                  setState(() {
+                    showAllActivities = !showAllActivities;
+                  });
+                },
+                child: Text(
+                  showAllActivities ? "Show Less" : "Show More",
+                  style: GoogleFonts.poppins(
+                    color: Colors.blue,
+                    fontSize: 14,
+                  ),
+                ),
+              ),
+          ],
+        ),
+        const SizedBox(height: 10),
+        if (recentActivities.isEmpty)
+          Center(
+            child: Text(
+              "No recent activities",
+              style: GoogleFonts.poppins(
+                color: Colors.grey,
+                fontSize: 14,
+              ),
+            ),
+          )
+        else
+          ListView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            itemCount: activitiesToShow.length,
+            itemBuilder: (context, index) {
+              final activity = activitiesToShow[index];
+              return Card(
+                margin: const EdgeInsets.only(bottom: 10),
+                child: ListTile(
+                  leading: const Icon(Icons.report, color: Colors.red),
+                  title: Text(
+                    activity['name'] ?? '',
+                    style: GoogleFonts.poppins(
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  subtitle: Text(
+                    activity['description'] ?? '',
+                    style: GoogleFonts.poppins(
+                      fontSize: 12,
+                    ),
+                  ),
+                  trailing: Text(
+                    _formatTimestamp(activity['timestamp'] ?? ''),
+                    style: GoogleFonts.poppins(
+                      fontSize: 12,
+                      color: Colors.grey,
+                    ),
+                  ),
+                ),
+              );
+            },
+          ),
+      ],
+    );
+  }
+
+  String _formatTimestamp(String timestamp) {
+    try {
+      final dateTime = DateTime.parse(timestamp);
+      final now = DateTime.now();
+      final difference = now.difference(dateTime);
+
+      if (difference.inDays > 0) {
+        return '${difference.inDays}d ago';
+      } else if (difference.inHours > 0) {
+        return '${difference.inHours}h ago';
+      } else if (difference.inMinutes > 0) {
+        return '${difference.inMinutes}m ago';
+      } else {
+        return 'Just now';
+      }
+    } catch (e) {
+      return '';
+    }
+  }
+
+  void _navigateToAdminPage() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => AdminPage()),
+    );
+  }
+
+  void _navigateToSecurityPage() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => SecurityPage()),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final screenWidth = MediaQuery.of(context).size.width;
 
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: isEmergencyMode ? Colors.red.withOpacity(0.1) : Colors.white,
       body: SafeArea(
         child: Stack(
           children: [
@@ -374,144 +608,233 @@ class _HomePageState extends State<HomePage> {
                         const SizedBox(height: 30),
 
                         // Trusted Contacts Section
-                        Container(
-                          width: double.infinity,
-                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
-                          decoration: BoxDecoration(
-                            border: Border.all(color: Colors.grey.shade300),
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                "Trusted contacts",
-                                style: GoogleFonts.poppins(fontWeight: FontWeight.bold, fontSize: 16),
-                              ),
-                              const SizedBox(height: 6),
-                              Text(
-                                "people who can see your location during emergencies",
-                                style: GoogleFonts.poppins(color: Colors.grey, fontSize: 13),
-                              ),
-                              const SizedBox(height: 20),
-                              widget.initialContacts.isNotEmpty
-                                  ? Column(
-                                      children: widget.initialContacts
-                                          .map((c) => ListTile(
-                                                title: Text(c['name'] ?? '', style: GoogleFonts.poppins()),
-                                                subtitle: Text(c['phone'] ?? '',
-                                                    style: GoogleFonts.poppins(fontSize: 12)),
-                                              ))
-                                          .toList(),
-                                    )
-                                  : Center(
-                                      child: Column(
-                                        children: [
-                                          const Icon(Icons.person_add, size: 36, color: Colors.grey),
-                                          const SizedBox(height: 10),
-                                          Text(
-                                            "No trusted contacts added",
-                                            style: GoogleFonts.poppins(fontSize: 14, color: Colors.grey),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                              const SizedBox(height: 10),
-                              Center(
-                                child: Container(
-                                  width: screenWidth * 0.6,
-                                  height: 45,
-                                  decoration: BoxDecoration(
-                                    gradient: const LinearGradient(
-                                      colors: [Color(0xFFF1EBFF), Color(0xFFEDEBFF)],
-                                    ),
-                                    borderRadius: BorderRadius.circular(12),
-                                    boxShadow: const [
-                                      BoxShadow(
-                                        color: Colors.black12,
-                                        blurRadius: 5,
-                                        offset: Offset(2, 4),
-                                      )
-                                    ],
-                                  ),
-                                  child: TextButton.icon(
-                                    onPressed: openManageContactsSheet,
-                                    icon: const Icon(Icons.manage_accounts, color: Colors.black),
-                                    label: Text(
-                                      "Manage contacts",
-                                      style: GoogleFonts.poppins(color: Colors.black),
-                                    ),
-                                    style: TextButton.styleFrom(
-                                      padding: const EdgeInsets.symmetric(horizontal: 10),
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
+                        buildTrustedContacts(),
 
                         const SizedBox(height: 20),
 
                         // Recent Activities Section
-                        GestureDetector(
-                          onTap: () => setState(() => showAllActivities = !showAllActivities),
-                          child: Container(
-                            width: double.infinity,
-                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
-                            decoration: BoxDecoration(
-                              border: Border.all(color: Colors.grey.shade300),
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  "Recent Activities",
-                                  style: GoogleFonts.poppins(fontWeight: FontWeight.bold, fontSize: 16),
-                                ),
-                                const SizedBox(height: 6),
-                                Text(
-                                  "your recent safety actions",
-                                  style: GoogleFonts.poppins(color: Colors.grey, fontSize: 13),
-                                ),
-                                const SizedBox(height: 20),
-                                if (showAllActivities)
-                                  Column(
-                                    children: recentActivities
-                                        .map((act) => ListTile(
-                                              title: Text(act['name'] ?? '', style: GoogleFonts.poppins()),
-                                              subtitle: Text(act['description'] ?? '',
-                                                  style: GoogleFonts.poppins(fontSize: 12)),
-                                            ))
-                                        .toList(),
-                                  )
-                                else if (recentActivities.isEmpty)
-                                  Center(
-                                    child: Column(
-                                      children: [
-                                        const Icon(Icons.history, size: 36, color: Colors.grey),
-                                        const SizedBox(height: 10),
-                                        Text(
-                                          "No data has found",
-                                          style: GoogleFonts.poppins(fontSize: 14, color: Colors.grey),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                              ],
-                            ),
-                          ),
-                        ),
+                        buildRecentActivities(),
                       ],
                     ),
                   ),
                 ],
               ),
             ),
+            if (isEmergencyMode)
+              Positioned.fill(
+                child: Container(
+                  color: Colors.red.withOpacity(0.1),
+                  child: Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        TweenAnimationBuilder<double>(
+                          tween: Tween(begin: 1.0, end: 1.5),
+                          duration: const Duration(milliseconds: 1000),
+                          builder: (context, value, child) {
+                            return Transform.scale(
+                              scale: value,
+                              child: Container(
+                                padding: const EdgeInsets.all(20),
+                                decoration: BoxDecoration(
+                                  color: Colors.red,
+                                  shape: BoxShape.circle,
+                                ),
+                                child: Text(
+                                  "SOS",
+                                  style: GoogleFonts.poppins(
+                                    color: Colors.white,
+                                    fontSize: 32,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                        const SizedBox(height: 20),
+                        ElevatedButton(
+                          onPressed: _stopSOSMode,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.white,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                          ),
+                          child: Text(
+                            "Cancel Emergency",
+                            style: GoogleFonts.poppins(
+                              color: Colors.red,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
           ],
         ),
       ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () {
+          openDialogeBox();
+        },
+        backgroundColor: Colors.red,
+        child: const Icon(Icons.sos),
+      ),
+      floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
+      drawer: Drawer(
+        child: ListView(
+          padding: EdgeInsets.zero,
+          children: [
+            DrawerHeader(
+              decoration: BoxDecoration(
+                color: Colors.blue,
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  CircleAvatar(
+                    radius: 30,
+                    backgroundImage: AssetImage('assets/images/profile.png'),
+                  ),
+                  SizedBox(height: 10),
+                  Text(
+                    'Welcome, User',
+                    style: GoogleFonts.poppins(
+                      color: Colors.white,
+                      fontSize: 18,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            ListTile(
+              leading: Icon(Icons.home),
+              title: Text('Home'),
+              onTap: () {
+                Navigator.pop(context);
+              },
+            ),
+            ListTile(
+              leading: Icon(Icons.map),
+              title: Text('Safety Map'),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => MapPage(
+                      contacts: widget.initialContacts,
+                      onContactsUpdated: widget.onContactsUpdated,
+                    ),
+                  ),
+                );
+              },
+            ),
+            ListTile(
+              leading: Icon(Icons.security),
+              title: Text('Security Dashboard'),
+              onTap: () {
+                Navigator.pop(context);
+                _navigateToSecurityPage();
+              },
+            ),
+            ListTile(
+              leading: Icon(Icons.admin_panel_settings),
+              title: Text('Admin Dashboard'),
+              onTap: () {
+                Navigator.pop(context);
+                _navigateToAdminPage();
+              },
+            ),
+            ListTile(
+              leading: Icon(Icons.settings),
+              title: Text('Settings'),
+              onTap: () {
+                Navigator.pop(context);
+                // Add settings navigation here
+              },
+            ),
+            ListTile(
+              leading: Icon(Icons.login),
+              title: Text('Login'),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => LoginPage()),
+                );
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget buildTrustedContacts() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              "Trusted Contacts",
+              style: GoogleFonts.poppins(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            IconButton(
+              icon: const Icon(Icons.add_circle_outline),
+              onPressed: openManageContactsSheet,
+              tooltip: "Add Contact",
+            ),
+          ],
+        ),
+        const SizedBox(height: 10),
+        if (widget.initialContacts.isEmpty)
+          Center(
+            child: Column(
+              children: [
+                const Icon(Icons.people_outline, size: 36, color: Colors.grey),
+                const SizedBox(height: 10),
+                Text(
+                  "No trusted contacts added",
+                  style: GoogleFonts.poppins(
+                    fontSize: 14,
+                    color: Colors.grey,
+                  ),
+                ),
+                const SizedBox(height: 10),
+                ElevatedButton(
+                  onPressed: openManageContactsSheet,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.deepPurple,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                  child: Text(
+                    "Add Contact",
+                    style: GoogleFonts.poppins(
+                      color: Colors.white,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          )
+        else
+          ContactList(
+            contacts: widget.initialContacts,
+            onDelete: deleteContact,
+          ),
+      ],
     );
   }
 }

@@ -30,7 +30,7 @@ class _MapPageState extends State<MapPage> {
   @override
   Widget build(BuildContext context) {
     return DefaultTabController(
-      length: 3,
+      length: 2,
       child: Scaffold(
         appBar: AppBar(
           automaticallyImplyLeading: false,
@@ -50,7 +50,6 @@ class _MapPageState extends State<MapPage> {
             tabs: const [
               Tab(text: "Live Location"),
               Tab(text: "Safety Map"),
-              Tab(text: "Alerts"),
             ],
           ),
           actions: [
@@ -85,9 +84,8 @@ class _MapPageState extends State<MapPage> {
               onShareRoute: () => _safetyMapKey.currentState?.shareRoute(),
               onUserCurrentLocation: () => _safetyMapKey.currentState?.userCurrentLocation(),
               contacts: widget.contacts,
-              onContactsUpdated: widget.onContactsUpdated, // Pass the callback
+              onContactsUpdated: widget.onContactsUpdated,
             ),
-            Container(),
           ],
         ),
         floatingActionButton: Builder(

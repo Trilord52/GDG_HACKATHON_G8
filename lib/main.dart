@@ -6,9 +6,15 @@ import 'features/core/presentation/providers/auth/auth_bloc.dart';
 import 'features/core/presentation/screens/intro_page.dart';
 import 'features/core/presentation/screens/sign_in_page.dart';
 import 'features/core/presentation/screens/register_page.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'features/core/presentation/bloc/register/register_bloc.dart';
+import 'features/core/presentation/bloc/auth/login_bloc.dart';
 
-void main() {
+void main() async{
+  WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp();
   runApp(const MyApp());
+
 }
 
 class MyApp extends StatelessWidget {
@@ -19,6 +25,8 @@ class MyApp extends StatelessWidget {
     return MultiBlocProvider(
       providers: [
         BlocProvider(create: (_) => AuthBloc()),
+        BlocProvider(create: (_) => RegisterBloc()),
+        BlocProvider(create: (_) => LoginBloc()),
         BlocProvider(
           create: (context) => NavigationCubit(),
           child: Container(),
