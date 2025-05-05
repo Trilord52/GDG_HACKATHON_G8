@@ -4,7 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:safe_campus/features/auth/domain/entities/user.dart';
 import 'auth_remote_data_source.dart';
-
+import 'dart:developer' as developer;
 class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
   final http.Client client;
   final SharedPreferences prefs;
@@ -61,6 +61,7 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
             'data': data['data'],
           };
         } else {
+          developer.log('Invalid response format: $data');
           return {
             'success': false,
             'error': 'Invalid response format from server',
@@ -92,6 +93,7 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
         };
       }
     } catch (e) {
+      developer.log('Error during login: $e');
       return {
         'success': false,
         'error': 'An error occurred during login: ${e.toString()}',
