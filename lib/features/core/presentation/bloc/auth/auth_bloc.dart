@@ -1,7 +1,7 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:equatable/equatable.dart';
 import 'package:safe_campus/features/auth/data/services/auth_service.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+//import 'package:shared_preferences/shared_preferences.dart';
 import 'package:safe_campus/features/auth/domain/entities/user.dart';
 
 // class User {
@@ -128,8 +128,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   }
 
   Future<void> _initializeAuthService() async {
-    final prefs = await SharedPreferences.getInstance();
-    _authService = AuthService(prefs);
+  
   }
 
   Future<void> _onAuthCheckRequested(

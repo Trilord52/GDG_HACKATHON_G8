@@ -12,11 +12,47 @@ class LoginBloc extends Bloc<LoginEvent, LoginState> {
   LoginBloc() : super(LoginInitial()) {
     _initializeAuthService();
     on<LoginSubmitted>(_onLoginSubmitted);
+    on<CheckLoginStatus>(_onCheckLoginStatus);
+    on<LogoutRequested>(_onLogoutRequested);
   }
 
   Future<void> _initializeAuthService() async {
     final prefs = await SharedPreferences.getInstance();
     _authService = AuthService(prefs);
+    add(CheckLoginStatus());
+  }
+
+  Future<void> _onCheckLoginStatus(
+    CheckLoginStatus event,
+    Emitter<LoginState> emit,
+  ) async {
+    try {
+      final isLoggedIn = await _authService.isLoggedIn();
+      if (isLoggedIn) {
+        final user = await _authService.getUser();
+        if (user != null) {
+          emit(LoginSuccess(user));
+        } else {
+          emit(LoginInitial());
+        }
+      } else {
+        emit(LoginInitial());
+      }
+    } catch (e) {
+      emit(LoginFailure('Error checking login status: ${e.toString()}'));
+    }
+  }
+
+  Future<void> _onLogoutRequested(
+    LogoutRequested event,
+    Emitter<LoginState> emit,
+  ) async {
+    try {
+      await _authService.logout();
+      emit(LoginInitial());
+    } catch (e) {
+      emit(LoginFailure('Error during logout: ${e.toString()}'));
+    }
   }
 
   Future<void> _onLoginSubmitted(
@@ -26,10 +62,7 @@ class LoginBloc extends Bloc<LoginEvent, LoginState> {
     emit(LoginLoading());
 
     try {
-      final result = await _authService.login(
-        event.email,
-        event.password,
-      );
+      final result = await _authService.login(event.email, event.password);
 
       if (result['success'] == true) {
         final userData = result['data']['user'];
@@ -47,4 +80,4 @@ class LoginBloc extends Bloc<LoginEvent, LoginState> {
       emit(LoginFailure('An error occurred during login: ${e.toString()}'));
     }
   }
-} 
+}

@@ -42,7 +42,10 @@ class _SecurityPageState extends State<SecurityPage> {
     final locationData = await _location.getLocation();
     if (locationData.latitude != null && locationData.longitude != null) {
       setState(() {
-        _currentLocation = LatLng(locationData.latitude!, locationData.longitude!);
+        _currentLocation = LatLng(
+          locationData.latitude!,
+          locationData.longitude!,
+        );
       });
     }
   }
@@ -52,13 +55,13 @@ class _SecurityPageState extends State<SecurityPage> {
       _isOnDuty = !_isOnDuty;
     });
     if (_isOnDuty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('You are now on duty')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('You are now on duty')));
     } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('You are now off duty')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('You are now off duty')));
     }
   }
 
@@ -91,20 +94,18 @@ class _SecurityPageState extends State<SecurityPage> {
                 _selectedFilter = value;
               });
             },
-            itemBuilder: (BuildContext context) => [
-              PopupMenuItem(
-                value: 'all',
-                child: Text('All Incidents'),
-              ),
-              PopupMenuItem(
-                value: 'emergency',
-                child: Text('Emergency Alerts'),
-              ),
-              PopupMenuItem(
-                value: 'active',
-                child: Text('Active Incidents'),
-              ),
-            ],
+            itemBuilder:
+                (BuildContext context) => [
+                  PopupMenuItem(value: 'all', child: Text('All Incidents')),
+                  PopupMenuItem(
+                    value: 'emergency',
+                    child: Text('Emergency Alerts'),
+                  ),
+                  PopupMenuItem(
+                    value: 'active',
+                    child: Text('Active Incidents'),
+                  ),
+                ],
           ),
         ],
       ),
@@ -114,7 +115,9 @@ class _SecurityPageState extends State<SecurityPage> {
             child: FlutterMap(
               mapController: _mapController,
               options: MapOptions(
-                initialCenter: _currentLocation ?? LatLng(0, 0),
+                initialCenter:
+                    _currentLocation ??
+                    LatLng(8.885324392473517, 38.80978558253636),
                 initialZoom: 15,
               ),
               children: [
@@ -123,31 +126,35 @@ class _SecurityPageState extends State<SecurityPage> {
                   userAgentPackageName: 'com.example.safe_campus',
                 ),
                 MarkerLayer(
-                  markers: _activeIncidents.where((incident) {
-                    if (_selectedFilter == 'all') return true;
-                    if (_selectedFilter == 'emergency') {
-                      return incident['type'] == 'emergency';
-                    }
-                    return incident['status'] == 'active';
-                  }).map((incident) {
-                    final location = incident['location'] as LatLng;
-                    Color markerColor;
-                    if (incident['type'] == 'emergency') {
-                      markerColor = Colors.red;
-                    } else if (incident['status'] == 'acknowledged') {
-                      markerColor = Colors.orange;
-                    } else {
-                      markerColor = Colors.yellow;
-                    }
-                    return Marker(
-                      point: location,
-                      child: Icon(
-                        Icons.warning,
-                        color: markerColor,
-                        size: 30,
-                      ),
-                    );
-                  }).toList(),
+                  markers:
+                      _activeIncidents
+                          .where((incident) {
+                            if (_selectedFilter == 'all') return true;
+                            if (_selectedFilter == 'emergency') {
+                              return incident['type'] == 'emergency';
+                            }
+                            return incident['status'] == 'active';
+                          })
+                          .map((incident) {
+                            final location = incident['location'] as LatLng;
+                            Color markerColor;
+                            if (incident['type'] == 'emergency') {
+                              markerColor = Colors.red;
+                            } else if (incident['status'] == 'acknowledged') {
+                              markerColor = Colors.orange;
+                            } else {
+                              markerColor = Colors.yellow;
+                            }
+                            return Marker(
+                              point: location,
+                              child: Icon(
+                                Icons.warning,
+                                color: markerColor,
+                                size: 30,
+                              ),
+                            );
+                          })
+                          .toList(),
                 ),
               ],
             ),
@@ -173,9 +180,10 @@ class _SecurityPageState extends State<SecurityPage> {
                       return ListTile(
                         leading: Icon(
                           Icons.warning,
-                          color: incident['type'] == 'emergency'
-                              ? Colors.red
-                              : incident['status'] == 'acknowledged'
+                          color:
+                              incident['type'] == 'emergency'
+                                  ? Colors.red
+                                  : incident['status'] == 'acknowledged'
                                   ? Colors.orange
                                   : Colors.yellow,
                         ),
@@ -224,4 +232,4 @@ class _SecurityPageState extends State<SecurityPage> {
       ),
     );
   }
-} 
+}

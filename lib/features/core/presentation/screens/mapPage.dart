@@ -1,14 +1,13 @@
+
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:safe_campus/features/core/presentation/screens/HomePage.dart';
+
 import 'package:safe_campus/features/core/presentation/screens/liveTracker.dart';
 import 'package:safe_campus/features/core/presentation/screens/safetyMap.dart';
 
 class MapPage extends StatefulWidget {
-  final List<Map<String, String>> contacts;
-  final Function(List<Map<String, String>>) onContactsUpdated; // Added callback
-
-  const MapPage({super.key, required this.contacts, required this.onContactsUpdated});
+  const MapPage({super.key});
 
   @override
   State<MapPage> createState() => _MapPageState();
@@ -16,22 +15,13 @@ class MapPage extends StatefulWidget {
 
 class _MapPageState extends State<MapPage> {
   final _safetyMapKey = GlobalKey<SafetyMapState>();
-  final _liveTrackerKey = GlobalKey<LiveTrackerState>();
-
-  void _onUserCurrentLocation() {
-    DefaultTabController.of(context).animateTo(0);
-    if (_liveTrackerKey.currentState?.getCurrentLocation() == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Unable to get current location")),
-      );
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
     return DefaultTabController(
       length: 2,
       child: Scaffold(
+        
         appBar: AppBar(
           automaticallyImplyLeading: false,
           title: Text(
@@ -43,13 +33,14 @@ class _MapPageState extends State<MapPage> {
           ),
           backgroundColor: Colors.deepPurpleAccent,
           foregroundColor: Colors.white,
+         
           bottom: TabBar(
             labelStyle: GoogleFonts.poppins(fontSize: 15, fontWeight: FontWeight.w500),
-            labelColor: Colors.white,
-            unselectedLabelColor: Colors.white70,
+            labelColor: Colors.white, // Set the text color for the selected tab
+            unselectedLabelColor: Colors.white70, // Optional: Set the text color for unselected tabs
             tabs: const [
-              Tab(text: "Live Location"),
               Tab(text: "Safety Map"),
+              Tab(text: "Live Tracker"),
             ],
           ),
           actions: [
@@ -57,7 +48,7 @@ class _MapPageState extends State<MapPage> {
               builder: (context) => IconButton(
                 icon: const Icon(Icons.report),
                 onPressed: () {
-                  DefaultTabController.of(context).index = 1;
+                  DefaultTabController.of(context).index = 0; // Switch to SafetyMap tab (now index 0)
                   _safetyMapKey.currentState?.reportIncident();
                 },
                 tooltip: "Report Incident",
@@ -67,7 +58,7 @@ class _MapPageState extends State<MapPage> {
               builder: (context) => IconButton(
                 icon: const Icon(Icons.share),
                 onPressed: () {
-                  DefaultTabController.of(context).index = 1;
+                  DefaultTabController.of(context).index = 0; // Switch to SafetyMap tab (now index 0)
                   _safetyMapKey.currentState?.shareRoute();
                 },
                 tooltip: "Share Route",
@@ -77,21 +68,22 @@ class _MapPageState extends State<MapPage> {
         ),
         body: TabBarView(
           children: [
-            LiveTracker(key: _liveTrackerKey),
             SafetyMap(
               key: _safetyMapKey,
               onReportIncident: () => _safetyMapKey.currentState?.reportIncident(),
               onShareRoute: () => _safetyMapKey.currentState?.shareRoute(),
               onUserCurrentLocation: () => _safetyMapKey.currentState?.userCurrentLocation(),
-              contacts: widget.contacts,
-              onContactsUpdated: widget.onContactsUpdated,
             ),
+            const LiveTracker(),
           ],
         ),
         floatingActionButton: Builder(
           builder: (context) => FloatingActionButton(
             elevation: 0,
-            onPressed: _onUserCurrentLocation,
+            onPressed: () {
+              DefaultTabController.of(context).index = 0; // Switch to SafetyMap tab (now index 0)
+              _safetyMapKey.currentState?.userCurrentLocation();
+            },
             backgroundColor: Colors.blue,
             child: const Icon(Icons.my_location, size: 30, color: Colors.white),
           ),

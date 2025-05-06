@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:safe_campus/features/core/presentation/screens/editProfile.dart';
+import 'package:safe_campus/features/core/presentation/bloc/auth/login_bloc.dart';
+import 'package:safe_campus/features/core/presentation/bloc/auth/login_event.dart';
+import 'package:safe_campus/features/core/presentation/bloc/auth/login_state.dart';
 
 class Profilepage extends StatefulWidget {
   const Profilepage({super.key});
@@ -15,201 +19,260 @@ class _ProfilepageState extends State<Profilepage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Color(0xFFFFFFFF),
-      appBar: AppBar(
-        automaticallyImplyLeading: false,
-        backgroundColor: Colors.white,
-        title: Text(
-          "Profile",
-          style: GoogleFonts.poppins(fontSize: 20, fontWeight: FontWeight.bold),
+    return BlocListener<LoginBloc, LoginState>(
+      listener: (context, state) {
+        if (state is LoginInitial) {
+          Navigator.pushReplacementNamed(context, '/signin');
+        }
+      },
+      child: Scaffold(
+        backgroundColor: Color(0xFFF8F9FA),
+        appBar: AppBar(
+          automaticallyImplyLeading: false,
+          backgroundColor: Colors.white,
+          elevation: 0,
+          title: Text(
+            "Profile",
+            style: GoogleFonts.poppins(
+              fontSize: 22,
+              fontWeight: FontWeight.bold,
+              color: Color(0xFF2D2D2D),
+            ),
+          ),
         ),
-      ),
-      body: Padding(
-        padding: const EdgeInsets.all(15.0),
-        child: Column(
-          //mainAxisAlignment: MainAxisAlignment.,
-          children: [
-            Container(
-              width: double.infinity,
-              height: 90,
-              decoration: BoxDecoration(
-                color: Color.fromARGB(255, 240, 239, 241),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Row(
-                //mainAxisAlignment: MainAxisAlignment.start,
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.all(8.0),
-                    child: Container(
-                      decoration: BoxDecoration(
-                        color: Color(0xFF65558F),
-                        shape: BoxShape.circle
-
+        body: SingleChildScrollView(
+          child: Padding(
+            padding: const EdgeInsets.all(20.0),
+            child: Column(
+              children: [
+                Container(
+                  width: double.infinity,
+                  height: 110,
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [Color(0xFF65558F), Color(0xFF8B7CB5)],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    borderRadius: BorderRadius.circular(16),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.grey.withOpacity(0.2),
+                        spreadRadius: 2,
+                        blurRadius: 8,
+                        offset: Offset(0, 4),
                       ),
-                      padding: EdgeInsets.all(0.7),
-                      child: CircleAvatar(
-                        backgroundColor: Colors.grey[300],
-                      
-                        radius: 40,
-                        child: Icon(Icons.person, size: 40),
+                    ],
+                  ),
+                  child: Row(
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.all(12.0),
+                        child: Container(
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            shape: BoxShape.circle,
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.1),
+                                spreadRadius: 2,
+                                blurRadius: 8,
+                                offset: Offset(0, 2),
+                              ),
+                            ],
+                          ),
+                          padding: EdgeInsets.all(4),
+                          child: CircleAvatar(
+                            backgroundColor: Colors.white,
+                            radius: 40,
+                            child: Icon(Icons.person, size: 40, color: Color(0xFF65558F)),
+                          ),
+                        ),
+                      ),
+                      SizedBox(
+                        width: 200,
+                        height: 80,
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Align(
+                              alignment: Alignment.centerLeft,
+                              child: Text(
+                                "Abel Mesfin",
+                                style: GoogleFonts.poppins(
+                                  fontSize: 22,
+                                  fontWeight: FontWeight.w600,
+                                  color: Colors.white,
+                                ),
+                              ),
+                            ),
+                            Align(
+                              alignment: Alignment.centerLeft,
+                              child: Text(
+                                'ETS 0304/16',
+                                style: GoogleFonts.poppins(
+                                  fontSize: 16,
+                                  color: Colors.white.withOpacity(0.8),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                SizedBox(height: 24),
+                Container(
+                  padding: EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(16),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.grey.withOpacity(0.1),
+                        spreadRadius: 1,
+                        blurRadius: 4,
+                        offset: Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        "Account settings",
+                        style: GoogleFonts.poppins(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w600,
+                          color: Color(0xFF2D2D2D),
+                        ),
+                      ),
+                      SizedBox(height: 16),
+                      displayContainer(
+                        context,
+                        onPress: () {
+                          Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (context) => Editprofile(),
+                            ),
+                          );
+                        },
+                        firsticon: Icons.person,
+                        label: 'Edit Profile',
+                        lasticon: Icons.arrow_forward_ios,
+                      ),
+                    ],
+                  ),
+                ),
+                SizedBox(height: 24),
+                Container(
+                  padding: EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(16),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.grey.withOpacity(0.1),
+                        spreadRadius: 1,
+                        blurRadius: 4,
+                        offset: Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        "Manage Notifications",
+                        style: GoogleFonts.poppins(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w600,
+                          color: Color(0xFF2D2D2D),
+                        ),
+                      ),
+                      SizedBox(height: 16),
+                      displayContainer2(
+                        context,
+                        onPress: () {
+                          setState(() {
+                            isPressedAlert = !isPressedAlert;
+                          });
+                        },
+                        label: "Sound alerts",
+                        lasticon: isPressedAlert
+                            ? Icons.toggle_on
+                            : Icons.toggle_off,
+                        isActive: isPressedAlert,
+                      ),
+                      SizedBox(height: 12),
+                      displayContainer2(
+                        context,
+                        onPress: () {
+                          setState(() {
+                            isPressedVibration = !isPressedVibration;
+                          });
+                        },
+                        label: "Vibrations",
+                        lasticon: isPressedVibration
+                            ? Icons.toggle_on
+                            : Icons.toggle_off,
+                        isActive: isPressedVibration,
+                      ),
+                    ],
+                  ),
+                ),
+                SizedBox(height: 32),
+                Container(
+                  width: double.infinity,
+                  height: 56,
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [Color(0xFF65558F), Color(0xFF8B7CB5)],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    borderRadius: BorderRadius.circular(28),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.grey.withOpacity(0.2),
+                        spreadRadius: 1,
+                        blurRadius: 4,
+                        offset: Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.transparent,
+                      shadowColor: Colors.transparent,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(28),
                       ),
                     ),
-                  ),
-                  //SizedBox(width: 3,),
-                  SizedBox(
-                    width: 200,
-                    height: 80,
-                    child: Column(
+                    onPressed: () {
+                      context.read<LoginBloc>().add(LogoutRequested());
+                    },
+                    child: Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Align(
-                          alignment: Alignment.centerLeft,
-                          child: Text(
-                            "Abel Mesfin",
-                            style: GoogleFonts.poppins(
-                              fontSize: 20,
-                              fontWeight: FontWeight.w600,
-                            ),
+                        Text(
+                          'Sign Out',
+                          style: GoogleFonts.poppins(
+                            color: Colors.white,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
                           ),
                         ),
-                        Align(
-                          alignment: Alignment.centerLeft,
-                          child: Text(
-                            'ETS 0304/16',
-                            style: GoogleFonts.poppins(
-                              fontSize: 15,
-                              color: Colors.grey,
-                            ),
-                          ),
-                        ),
+                        SizedBox(width: 8),
+                        Icon(Icons.logout, color: Colors.white, size: 20),
                       ],
                     ),
                   ),
-                ],
-              ),
-            ),
-            SizedBox(height: 7),
-            Divider(),
-            SizedBox(height: 7),
-            SizedBox(
-              height: 95,
-              width: double.infinity,
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Align(
-                    alignment: Alignment.centerLeft,
-                    child: Text(
-                      "Account settings",
-                      style: GoogleFonts.poppins(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w500,
-                        color: Color(0xFF7C7C7C),
-                      ),
-                    ),
-                  ),
-                  displayContainer(
-                    context,
-                    onPress: () {
-                      Navigator.of(context).push(
-                        MaterialPageRoute(builder: (context) => Editprofile()),
-                      );
-                    },
-                    firsticon: Icons.person,
-                    label: 'Edit Profile',
-                    lasticon: Icons.arrow_forward,
-                  ),
-                ],
-              ),
-            ),
-            SizedBox(height: 7),
-            Divider(),
-            SizedBox(height: 7),
-            SizedBox(
-              height: 180,
-              width: double.infinity,
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: [
-                  Align(
-                    alignment: Alignment.centerLeft,
-                    child: Text(
-                      "Manage Notifications",
-                      style: GoogleFonts.poppins(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w500,
-                        color: Color(0xFF7C7C7C),
-                      ),
-                    ),
-                  ),
-                  displayContainer2(
-                    context,
-                    onPress: () {
-                      setState(() {
-                        isPressedAlert = !isPressedAlert;
-                      });
-                    },
-                    label: "Sound alerts",
-                    lasticon:
-                        isPressedAlert
-                            ? Icons.toggle_on_outlined
-                            : Icons.toggle_off_outlined,
-                  ),
-                  displayContainer2(
-                    context,
-                    onPress: () {
-                      setState(() {
-                        isPressedVibration = !isPressedVibration;
-                      });
-                    },
-                    label: "Vibrations",
-                    lasticon:
-                        isPressedVibration
-                            ? Icons.toggle_on_outlined
-                            : Icons.toggle_off_outlined,
-                  ),
-                ],
-              ),
-            ),
-            SizedBox(height: 30),
-            Container(
-              width: 275,
-              height: 50,
-
-              decoration: BoxDecoration(
-                color: Color.fromARGB(255, 239, 239, 241),
-                borderRadius: BorderRadius.circular(30),
-                border: Border.all(width: 0.5, color: Colors.red),
-              ),
-              child: ElevatedButton(
-                style: ButtonStyle(
-                  backgroundColor: WidgetStatePropertyAll(
-                    Color.fromARGB(255, 239, 239, 241),
-                  ),
                 ),
-                onPressed: () {
-                  Navigator.pushReplacementNamed(context, '/signin');
-                },
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text(
-                      'sign out',
-                      style: GoogleFonts.poppins(
-                        color: Colors.red,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    SizedBox(width: 8),
-                    Icon(Icons.logout, color: Colors.black),
-                  ],
-                ),
-              ),
+              ],
             ),
-            //SizedBox(height: 20),
-          ],
+          ),
         ),
       ),
     );
@@ -226,9 +289,9 @@ Widget displayContainer(
   return Container(
     width: double.infinity,
     height: 60,
-    padding: EdgeInsets.only(left: 15, right: 15),
+    padding: EdgeInsets.symmetric(horizontal: 16),
     decoration: BoxDecoration(
-      color: Color.fromARGB(255, 240, 239, 241),
+      color: Color(0xFFF8F9FA),
       borderRadius: BorderRadius.circular(12),
     ),
     child: Row(
@@ -236,18 +299,22 @@ Widget displayContainer(
       children: [
         Row(
           children: [
-            Icon(firsticon, size: 30),
-            SizedBox(width: 20),
+            Icon(firsticon, size: 24, color: Color(0xFF65558F)),
+            SizedBox(width: 16),
             Text(
               label,
               style: GoogleFonts.poppins(
-                fontSize: 17,
+                fontSize: 16,
                 fontWeight: FontWeight.w500,
+                color: Color(0xFF2D2D2D),
               ),
             ),
           ],
         ),
-        IconButton(onPressed: onPress, icon: Icon(lasticon, size: 30)),
+        IconButton(
+          onPressed: onPress,
+          icon: Icon(lasticon, size: 20, color: Color(0xFF65558F)),
+        ),
       ],
     ),
   );
@@ -255,17 +322,17 @@ Widget displayContainer(
 
 Widget displayContainer2(
   BuildContext context, {
-
   required String label,
   required VoidCallback onPress,
   required IconData lasticon,
+  required bool isActive,
 }) {
   return Container(
     width: double.infinity,
     height: 60,
-    padding: EdgeInsets.only(left: 15, right: 15),
+    padding: EdgeInsets.symmetric(horizontal: 16),
     decoration: BoxDecoration(
-      color: Color.fromARGB(255, 240, 239, 241),
+      color: Color(0xFFF8F9FA),
       borderRadius: BorderRadius.circular(12),
     ),
     child: Row(
@@ -273,9 +340,20 @@ Widget displayContainer2(
       children: [
         Text(
           label,
-          style: GoogleFonts.poppins(fontSize: 16, fontWeight: FontWeight.w500),
+          style: GoogleFonts.poppins(
+            fontSize: 16,
+            fontWeight: FontWeight.w500,
+            color: Color(0xFF2D2D2D),
+          ),
         ),
-        IconButton(onPressed: onPress, icon: Icon(lasticon, size: 40)),
+        IconButton(
+          onPressed: onPress,
+          icon: Icon(
+            lasticon,
+            size: 40,
+            color: isActive ? Color(0xFF65558F) : Colors.grey[400],
+          ),
+        ),
       ],
     ),
   );

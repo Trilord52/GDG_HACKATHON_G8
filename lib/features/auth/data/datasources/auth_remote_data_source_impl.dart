@@ -16,97 +16,103 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
     required this.client,
     required this.prefs,
   });
+Future<Map<String, dynamic>> login(String email, String password) async {
+  try {
+    // Validate inputs
+    if (email.isEmpty || password.isEmpty) {
+      return {
+        'success': false,
+        'error': 'Email and password are required',
+      };
+    }
 
-  Future<Map<String, dynamic>> login(String email, String password) async {
+    // Get device token
+    String? deviceToken = await _firebaseMessaging.getToken();
+
+    // Send login request
+    final response = await client.post(
+      Uri.parse('$baseUrl/auth/login'),
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
+      body: jsonEncode({
+        'email': email,
+        'password': password,
+        'deviceToken': deviceToken,
+      }),
+    );
+
+    developer.log('Status Code: ${response.statusCode}');
+    developer.log('Response Body: ${response.body}');
+
+    late final Map<String, dynamic> responseBody;
     try {
-      // Validate inputs
-      if (email.isEmpty || password.isEmpty) {
+      responseBody = jsonDecode(response.body);
+    } catch (e) {
+      developer.log('JSON decode error: $e');
+      return {
+        'success': false,
+        'error': 'Invalid response format from server: ${response.body}',
+      };
+    }
+
+    if (response.statusCode == 200) {
+      final data = responseBody['data'];
+      String? token = data?['token'];
+      final userJson = data?['user'];
+
+      if (token != null && userJson != null) {
+        // Add token to user JSON before saving
+        userJson['token'] = token;
+
+        await prefs.setString('token', token);
+        await prefs.setString('user', jsonEncode(userJson));
+
+        token = prefs.getString('token');
+
+        developer.log(token.toString());
+
         return {
-          'success': false,
-          'error': 'Email and password are required',
-        };
-      }
-
-      // Get device token
-      String? deviceToken = await _firebaseMessaging.getToken();
-      developer.log('Device Token: $deviceToken');
-
-      // Send login request
-      final response = await client.post(
-        Uri.parse('$baseUrl/auth/login'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-        },
-        body: jsonEncode({
-          'email': email,
-          'password': password,
-          'deviceToken': deviceToken,
-        }),
-      );
-
-      developer.log('Status Code: ${response.statusCode}');
-      developer.log('Response Body: ${response.body}');
-
-      late final Map<String, dynamic> data;
-      try {
-        data = jsonDecode(response.body);
-      } catch (e) {
-        developer.log('JSON decode error: $e');
-        return {
-          'success': false,
-          'error': 'Invalid response format from server: ${response.body}',
-        };
-      }
-
-      if (response.statusCode == 200) {
-        if (data['success'] == true &&
-            data['data'] != null &&
-            data['data']['token'] != null &&
-            data['data']['user'] != null) {
-          await prefs.setString('token', data['data']['token']);
-          await prefs.setString('user', jsonEncode(data['data']['user']));
-
-          return {
-            'success': true,
-            'data': data['data'],
-          };
-        } else {
-          developer.log('Invalid response format: $data');
-          return {
-            'success': false,
-            'error': 'Invalid response format from server',
-          };
-        }
-      } else if (response.statusCode == 400) {
-        return {
-          'success': false,
-          'error': data['message'] ?? 'Invalid email or password',
-        };
-      } else if (response.statusCode == 401) {
-        return {
-          'success': false,
-          'error': 'Invalid credentials',
-        };
-      } else if (response.statusCode == 404) {
-        return {
-          'success': false,
-          'error': 'User not found',
+          'success': true,
+          'data': data,
         };
       } else {
         return {
           'success': false,
-          'error': data['message'] ?? 'Login failed',
+          'error': 'Token or user data missing in server response',
         };
       }
-    } catch (e, stack) {
-      developer.log('Unexpected error during login: $e', stackTrace: stack);
+    } else if (response.statusCode == 400) {
       return {
         'success': false,
-        'error': 'An error occurred during login: ${e.toString()}',
+        'error': responseBody['message'] ?? 'Invalid email or password',
+      };
+    } else if (response.statusCode == 401) {
+      return {
+        'success': false,
+        'error': 'Invalid credentials',
+      };
+    } else if (response.statusCode == 404) {
+      return {
+        'success': false,
+        'error': 'User not found',
+      };
+    } else {
+      return {
+        'success': false,
+        'error': responseBody['message'] ?? 'Login failed',
       };
     }
+  } catch (e, stack) {
+    developer.log('Unexpected error during login: $e', stackTrace: stack);
+    return {
+      'success': false,
+      'error': 'An error occurred during login: ${e.toString()}',
+    };
   }
+}
+
 
 
 @override

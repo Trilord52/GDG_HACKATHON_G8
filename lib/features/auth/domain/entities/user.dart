@@ -9,7 +9,7 @@ class User extends Equatable {
   final List<Map<String, dynamic>>? trustedContacts;
   final Map<String, dynamic>? location;
   final String? addressDescription;
-
+  final String token;
   const User({
     required this.id,
     required this.name,
@@ -19,20 +19,22 @@ class User extends Equatable {
     this.trustedContacts,
     this.location,
     this.addressDescription,
+   required this.token
   });
 
   factory User.fromJson(Map<String, dynamic> json) {
     return User(
-      id: json['_id'] ?? '',
+      id: json['_id'] ?? 'id',
       name: json['name'] ?? '',
       email: json['email'] ?? '',
-      role: json['role'] ?? 'user',
+      role: json['role'] ?? 'student',
       studentId: json['studentId'],
       trustedContacts: json['trustedContacts'] != null
           ? List<Map<String, dynamic>>.from(json['trustedContacts'])
           : null,
       location: json['location'],
       addressDescription: json['addressDescription'],
+      token: json['token'] ?? '', // Ensure token is always a string
     );
   }
 
@@ -46,6 +48,7 @@ class User extends Equatable {
       'trustedContacts': trustedContacts,
       'location': location,
       'addressDescription': addressDescription,
+      'token': token, 
     };
   }
 
@@ -59,5 +62,6 @@ class User extends Equatable {
         trustedContacts,
         location,
         addressDescription,
+        token,
       ];
 } 

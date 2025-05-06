@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:safe_campus/features/core/data/models/contacts_model.dart';
+import 'package:safe_campus/features/core/presentation/bloc/add_contacts_cubit/contact_cubit.dart';
 
 class ContactFormBottomSheet extends StatefulWidget {
   final Function(String, String, String) onSave;
@@ -79,14 +82,16 @@ class _ContactFormBottomSheetState extends State<ContactFormBottomSheet> {
             width: double.infinity,
             child: ElevatedButton(
               onPressed: () {
+
                 if (nameController.text.isNotEmpty && 
                     phoneController.text.isNotEmpty && 
                     emailController.text.isNotEmpty) {
-                  widget.onSave(
-                    nameController.text,
-                    phoneController.text,
-                    emailController.text,
-                  );
+
+                  
+                  context.read<ContactCubit>().addContact(
+                    Contact(fullName: nameController.text, email: emailController.text, phoneNumber: phoneController.text,),);
+      
+
                   Navigator.pop(context);
                 } else {
                   ScaffoldMessenger.of(context).showSnackBar(

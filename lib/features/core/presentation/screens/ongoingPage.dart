@@ -12,9 +12,9 @@ class Ongoingpage extends StatelessWidget {
       body: ListView(
         
         children: [
-          Ongoingcontainer(image: null, name: "biniyam", detailes: "1 minute ago"),
-          Ongoingcontainer(image: null, name: "biniyam", detailes: "10 minute ago"),
-          Ongoingcontainer(image: null, name: "biniyam", detailes: "1 hour ago"),
+          Ongoingcontainer(image: null, name: "Biniyam", detailes: "1 minute ago"),
+          Ongoingcontainer(image: null, name: "Jane Smith", detailes: "10 minute ago"),
+          Ongoingcontainer(image: null, name: "John Doe", detailes: "1 hour ago"),
         ],
       )
     );

@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:safe_campus/features/core/presentation/bloc/auth/auth_bloc.dart';
+import 'package:safe_campus/features/core/presentation/bloc/socket/socket_bloc.dart';
+import 'package:safe_campus/features/core/presentation/bloc/socket/socket_event.dart';
 import 'package:safe_campus/features/core/presentation/screens/admin/admin_dashboard.dart';
 import 'package:safe_campus/features/core/presentation/screens/admin/security_dashboard.dart';
 import 'package:safe_campus/features/core/presentation/screens/home.dart';
@@ -89,7 +91,10 @@ class _SignInPageState extends State<SignInPage> {
     return BlocConsumer<LoginBloc, LoginState>(
       listener: (context, state) {
         if (state is LoginSuccess) {
-          _navigateToDashboard(state.user);
+
+         
+          
+         // _navigateToDashboard(state.user);
         } else if (state is LoginFailure) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(

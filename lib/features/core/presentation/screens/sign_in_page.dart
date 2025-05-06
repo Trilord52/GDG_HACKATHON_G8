@@ -2,9 +2,17 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:safe_campus/features/auth/domain/entities/user.dart';
 import 'package:safe_campus/features/core/presentation/bloc/auth/login_bloc.dart';
 import 'package:safe_campus/features/core/presentation/bloc/auth/login_event.dart';
 import 'package:safe_campus/features/core/presentation/bloc/auth/login_state.dart';
+import 'package:safe_campus/features/core/presentation/bloc/socket/socket_bloc.dart';
+import 'package:safe_campus/features/core/presentation/bloc/socket/socket_event.dart';
+import 'package:safe_campus/features/core/presentation/screens/admin/security_dashboard.dart';
+import 'dart:developer' as developer;
+
+import 'package:safe_campus/features/core/presentation/screens/admin_page.dart';
+import 'package:safe_campus/features/core/presentation/screens/home.dart';
 
 class SignInPage extends StatefulWidget {
   const SignInPage({super.key});
@@ -25,11 +33,23 @@ class _SignInPageState extends State<SignInPage> {
     _passwordController.dispose();
     super.dispose();
   }
-
-  void _submitForm() {
-    if (_formKey.currentState!.validate()) {
-      Fluttertoast.showToast(msg: "Processing Data");
-      Navigator.of(context).pushReplacementNamed('/home');
+  
+  void _navigateToDashboard(User user) {
+    if (user.role == 'admin') {
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => const AdminPage()),
+      );
+    } else if (user.role == 'security') {
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => const SecurityDashboard()),
+      );
+    } else {
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => const Home()),
+      );
     }
   }
 
@@ -37,17 +57,29 @@ class _SignInPageState extends State<SignInPage> {
   Widget build(BuildContext context) {
     return BlocConsumer<LoginBloc, LoginState>(
       listener: (context, state) {
-          if(state is LoginFailure){
-            Fluttertoast.showToast(msg: state.error);
-          } else if (state is LoginSuccess) {
-           
-            Navigator.of(context).pushReplacementNamed('/home');
-          } 
+        if (state is LoginFailure) {
+          Fluttertoast.showToast(msg: state.error);
+        } else if (state is LoginSuccess) {
+            developer.log('token: ${state.user.token}',);
+            developer.log('userId: ${state.user.id}',);
+            if(state.user.token.isEmpty) {
+              Fluttertoast.showToast(msg: 'Token is empty');
+            } else {
+               context.read<SocketBloc>().add(ConnectSocket(state.user.id, state.user.token));
+            }
+          
+         _navigateToDashboard(state.user);
+        }
       },
       builder: (context, state) {
         if (state is LoginLoading) {
-          return Scaffold(body: const Center(child: CircularProgressIndicator()));
+          return const Scaffold(
+            body: Center(
+              child: CircularProgressIndicator(),
+            ),
+          );
         }
+
         return Scaffold(
           body: Container(
             decoration: const BoxDecoration(
@@ -112,11 +144,6 @@ class _SignInPageState extends State<SignInPage> {
                             if (value == null || value.isEmpty) {
                               return "Please enter password";
                             }
-                            if (!RegExp(
-                              r'^[^@]+@[^@]+\.[^@]+',
-                            ).hasMatch(value)) {
-                              return 'Enter a valid email';
-                            }
                             return null;
                           },
                           obscureText: true,
@@ -132,17 +159,18 @@ class _SignInPageState extends State<SignInPage> {
                         const SizedBox(height: 20),
                         ElevatedButton(
                           onPressed: () {
-                            _submitForm();
-                            BlocProvider.of<LoginBloc>(context).add(
-                              LoginSubmitted(
-                                email: _studentIdController.text,
-                                password: _passwordController.text,
-                              ),
-                            );
+                            if (_formKey.currentState!.validate()) {
+                              context.read<LoginBloc>().add(
+                                  LoginSubmitted(
+                                      email: _studentIdController.text,
+                                      password: _passwordController.text,
+                                    ),
+                                  );
+                            }
                           },
                           style: ElevatedButton.styleFrom(
                             minimumSize: const Size(double.infinity, 50),
-                            backgroundColor: Color(0xFF65558F),
+                            backgroundColor: const Color(0xFF65558F),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(10),
                             ),
@@ -162,9 +190,8 @@ class _SignInPageState extends State<SignInPage> {
                           children: [
                             const Text("Don't have account?"),
                             TextButton(
-                              onPressed:
-                                  () =>
-                                      Navigator.pushNamed(context, '/register'),
+                              onPressed: () =>
+                                  Navigator.pushNamed(context, '/register'),
                               child: const Text('Register'),
                             ),
                           ],

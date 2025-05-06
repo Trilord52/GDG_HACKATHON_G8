@@ -18,12 +18,12 @@ class Historypage extends StatelessWidget {
           ),
           Historypagecontainer(
             image: null,
-            name: "biniyam",
+            name: "John Doe",
             detailes: "1 week ago",
           ),
           Historypagecontainer(
             image: null,
-            name: "biniyam",
+            name: "Jane Smith",
             detailes: "1 month ago",
           ),
         ],
