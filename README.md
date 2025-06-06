@@ -120,11 +120,11 @@ Instantly trigger an emergency alert to notify trusted contacts.
 
 🧪 Usage Guide
 
-Launch the App
+**Launch the App**
 
 The app opens to the Home screen with the SOS button.
 
-Navigate the Features
+**Navigate the Features**
 
 Home Screen: Use the SOS button or navigate to the dashboard.
 
@@ -136,7 +136,7 @@ Live Tracker: Share your live location.
 
 Safety Map: Report incidents and share routes.
 
-Share Location
+**Share Location**
 
 Go to Live Tracker tab.
 
@@ -154,7 +154,8 @@ Fill in the description and optionally attach media.
 
 Submit anonymously.
 
-🔧 Technical Highlights
+**🔧 Technical Highlights**
+
 Location Services: Uses geolocator for real-time updates and permission handling.
 
 Mapping: Integrates flutter_map with OpenStreetMap.
@@ -168,21 +169,36 @@ Geocoding (via Nominatim)
 Route fetching (via OSRM)
 
 Dependency Management: Resolved conflicts between flutter_map_location_marker and geolocator.
+
 ---
 
 📈 Contribution Summary
+
 Feature Implementation:
+
 ☑️ Real-time location tracking and sharing
+
 ☑️ Safety map with route fetching and incident reporting
+
 ☑️ Trusted contacts and emergency alerts
+
 ☑️ Modular UI components (bottom sheets, contact lists)
+
 Technical Contributions:
+
 ☑️ Dependency resolution for flutter_map_location_marker and geolocator
+
 ☑️ Gradle build fixes (daemon issues, timeouts)
+
 ☑️ Code refactoring to use geolocator exclusively
+
 Project Milestones:
+
 ☑️ AASTU GDSC Hackathon submission
+
 ☑️ Achieved 3rd place overall and 1st in Flutter development 🥉🏆
+
 ---
 🙌 Acknowledgments
+
 Built as part of the AASTU GDSC Hackathon. Special thanks to the organizing team, mentors, and our team for their dedication in creating a safer campus environment! 🌟
